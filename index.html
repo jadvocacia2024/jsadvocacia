@@ -5,10 +5,28 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>JSAdvocacia — Sistema de Gestão v2.0</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script>
   const SUPABASE_URL = 'https://mwbctvbukjcrkmxyjrrj.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im13YmN0dmJ1a2pjcmtteHlqcnJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyMjg1ODksImV4cCI6MjA5MjgwNDU4OX0.ir-bLav3qwYqO1HFPITBZ4qqdsW5TGDC4jI1ARhGmhw';
   const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // ── EMAILJS CONFIG ───────────────────────────────────────────────
+  // Configure em https://emailjs.com com sua conta
+  const EMAILJS_PUBLIC_KEY  = 'CONFIGURE_EMAILJS_KEY';
+  const EMAILJS_SERVICE_ID  = 'CONFIGURE_SERVICE_ID';
+  const EMAILJS_TEMPLATE_ID = 'CONFIGURE_TEMPLATE_ID';
+  emailjs.init(EMAILJS_PUBLIC_KEY);
+
+  async function enviarEmailNotificacao(para, assunto, mensagem) {
+    if (EMAILJS_PUBLIC_KEY === 'CONFIGURE_EMAILJS_KEY') return;
+    try {
+      await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+        to_email: para, subject: assunto, message: mensagem,
+        from_name: 'JSAdvocacia Sistema'
+      });
+    } catch(e) { console.warn('Email não enviado:', e); }
+  }
 
   // ── PERSISTÊNCIA SUPABASE ────────────────────────────────────────
   const DB = {
@@ -528,10 +546,7 @@
   .docs-ok { color:var(--verde); font-weight:600; font-size:12px; }
 
 </style>
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<!-- Firebase removido — autenticação migrada para Supabase Auth -->
 </head>
 <body>
 
@@ -1201,55 +1216,89 @@ const CAD_CONFIG = {
 };
 
 // ════════════════════════════════════
-// LOGIN
+// LOGIN — SUPABASE AUTH
 // ════════════════════════════════════
 async function doLogin() {
   const u = document.getElementById('login-user').value.trim();
   const s = document.getElementById('login-pass').value;
   const errEl = document.getElementById('login-error');
+  const btnLogin = document.querySelector('#login-screen button');
   errEl.style.display = 'none';
+  if (!u || !s) { errEl.style.display='block'; errEl.textContent='Preencha e-mail e senha.'; return; }
 
-  // Verificar se usuário existe no sistema
-  const found = USUARIOS.find(x => (x.login===u||x.email===u) && x.ativo);
-  if (!found) { errEl.style.display='block'; errEl.textContent='Usuário não encontrado.'; return; }
+  // Determinar e-mail a usar
+  const found = USUARIOS.find(x => x.login===u || x.email===u);
+  const loginEmail = found ? found.email : u;
 
-  // Firebase Auth (quando configurado)
-  if (fbReady && found.email) {
-    try {
-      fbShowLoading('Autenticando...');
-      const loginEmail = found.email;
-      await fbAuth.signInWithEmailAndPassword(loginEmail, s);
-      // Continua em fbOnAuthChange
-    } catch(e) {
-      fbHideLoading();
-      errEl.style.display = 'block';
-      errEl.textContent = e.code==='auth/wrong-password'||e.code==='auth/invalid-credential'
-        ? 'Senha incorreta.' : e.code==='auth/user-not-found'
-        ? 'Conta não criada no Firebase. Use o painel Admin → Usuários para criar.' : 'Erro: '+e.message;
-    }
+  if(btnLogin) { btnLogin.textContent='Entrando...'; btnLogin.disabled=true; }
+
+  const { data, error } = await _sb.auth.signInWithPassword({ email: loginEmail, password: s });
+
+  if(btnLogin) { btnLogin.textContent='Entrar'; btnLogin.disabled=false; }
+
+  if (error) {
+    errEl.style.display='block';
+    errEl.textContent = error.message.includes('Invalid') ? 'E-mail ou senha incorretos.' : 'Erro: ' + error.message;
     return;
   }
 
-  // Firebase não configurado: bloquear acesso
-  errEl.style.display='block';
-  errEl.textContent='Sistema não configurado. Configure o Firebase para acessar.';
+  // Carregar perfil do usuário
+  const { data: perfil } = await _sb.from('usuarios').select('*').eq('email', loginEmail).single();
+  if (perfil) {
+    currentUser = { id: perfil.id, nome: perfil.nome, login: perfil.login, email: perfil.email, perfil: perfil.perfil, ativo: perfil.ativo };
+  } else {
+    currentUser = { id: data.user.id, nome: data.user.user_metadata?.nome || loginEmail, login: u, email: loginEmail, perfil: 'Administrador', ativo: true };
+  }
+
+  await carregarDadosBanco();
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='flex';
+  renderDashboard();
+  fbSetStatus('online');
 }
 
-function doLogout() {
+async function doLogout() {
+  await _sb.auth.signOut();
   currentUser = null;
-  if (fbReady && fbAuth) fbAuth.signOut().catch(()=>{});
   document.getElementById('app').style.display='none';
   document.getElementById('login-screen').style.display='flex';
   document.getElementById('login-user').value='';
   document.getElementById('login-pass').value='';
-  fbSetStatus(fbReady ? (fbConnected?'online':'offline') : 'local');
+  fbSetStatus('offline');
 }
+
+// ── UPLOAD DE DOCUMENTOS ────────────────────────────────────────────
+async function uploadDocumento(file, clienteId, processoId) {
+  const ext = file.name.split('.').pop();
+  const path = `cliente_${clienteId}/proc_${processoId||'geral'}/${Date.now()}_${file.name}`;
+  const { data, error } = await _sb.storage.from('documentos').upload(path, file, { upsert: true });
+  if (error) { alert('Erro no upload: ' + error.message); return null; }
+  const { data: urlData } = _sb.storage.from('documentos').getPublicUrl(path);
+  return { path, url: urlData.publicUrl };
+}
+
+async function getUrlDocumento(path) {
+  const { data } = _sb.storage.from('documentos').getPublicUrl(path);
+  return data.publicUrl;
+}
+
+// Verificar sessão existente ao carregar
+_sb.auth.getSession().then(async ({ data: { session } }) => {
+  if (session) {
+    const { data: perfil } = await _sb.from('usuarios').select('*').eq('email', session.user.email).single();
+    if (perfil) {
+      currentUser = { id: perfil.id, nome: perfil.nome, login: perfil.login, email: perfil.email, perfil: perfil.perfil, ativo: perfil.ativo };
+      await carregarDadosBanco();
+      document.getElementById('login-screen').style.display='none';
+      document.getElementById('app').style.display='flex';
+      renderDashboard();
+      fbSetStatus('online');
+    }
+  }
+});
 
 document.getElementById('login-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 document.getElementById('login-user').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('login-pass').focus();});
-
-// Iniciar Firebase ao carregar
-fbInit();
 
 // ════════════════════════════════════
 // INIT
