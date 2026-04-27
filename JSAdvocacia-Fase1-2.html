@@ -4191,11 +4191,12 @@ function renderSuporte(){
   const hoje = new Date();
   const toISO = d => d.toISOString().slice(0,10);
 
+  const porData = (a,b) => (a.data||'9999').localeCompare(b.data||'9999');
   const svcAtivos = SERVICOS.filter(s=>s.status!=='Concluído');
 
-  const aFazer    = svcAtivos.filter(s=>s.status==='A Fazer');
-  const emAndamento = svcAtivos.filter(s=>s.status==='Em Andamento');
-  const concluidos = SERVICOS.filter(s=>s.status==='Concluído').slice(0,5);
+  const aFazer    = svcAtivos.filter(s=>s.status==='A Fazer').sort(porData);
+  const emAndamento = svcAtivos.filter(s=>s.status==='Em Andamento').sort(porData);
+  const concluidos = SERVICOS.filter(s=>s.status==='Concluído').sort((a,b)=>b.data.localeCompare(a.data)).slice(0,5);
 
   function cardHtml(s){
     const proc = PROCESSOS.find(p=>p.id===s.processoId);
