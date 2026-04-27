@@ -2747,6 +2747,7 @@ function completudeHtml(c){
 }
 
 function renderClientes(){
+  const isParceiro = currentUser.perfil==='Parceiro';
   let list=CLIENTES.filter(c=>{
     const t=filtroClientes.busca.toLowerCase();
     const okB=!t||c.nome.toLowerCase().includes(t)||c.cpf.includes(t);
