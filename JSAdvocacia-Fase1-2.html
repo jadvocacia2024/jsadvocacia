@@ -54,7 +54,7 @@
 
   // Carrega dados do banco ao iniciar
   async function carregarDadosBanco() {
-    const [cli, proc, serv, svcCli, docs, prec, desp, leads_, tarefas_, log_] = await Promise.all([
+    const [cli, proc, serv, svcCli, docs, prec, desp, leads_, tarefas_, log_, users_] = await Promise.all([
       DB.carregar('clientes'),
       DB.carregar('processos'),
       DB.carregar('servicos'),
@@ -65,6 +65,7 @@
       DB.carregar('leads'),
       DB.carregar('tarefas'),
       DB.carregar('log_atividades'),
+      DB.carregar('usuarios'),
     ]);
     // Mapear colunas snake_case -> camelCase (sempre sobrescreve, mesmo se vazio)
     if (cli !== null) CLIENTES = (cli||[]).map(c => ({
@@ -113,6 +114,18 @@
       id: d.id, nome: d.nome, tipo: d.tipo, clienteId: d.cliente_id,
       processoId: d.processo_id, status: d.status, obs: d.obs, criacao: d.created_at
     }));
+    if (users_ !== null && users_.length) {
+      const currentId = currentUser ? currentUser.id : null;
+      USUARIOS = users_.map(u => ({
+        id: u.id, nome: u.nome, login: u.login, email: u.email,
+        perfil: u.perfil, ativo: u.ativo, principal: u.principal||false, auth_id: u.auth_id
+      }));
+      // Garantir que currentUser esteja sincronizado com dados mais recentes
+      if(currentId) {
+        const me = USUARIOS.find(u=>u.id===currentId);
+        if(me) Object.assign(currentUser, me);
+      }
+    }
     if (tarefas_ !== null) {
       TAREFAS_POR_USER = {};
       (tarefas_||[]).forEach(t => {
@@ -3407,6 +3420,7 @@ function openServicoModal(id=null,preProcessoId=null){
   procSel.innerHTML='<option value="">Selecionar processo...</option>'+PROCESSOS.map(p=>{const cli=CLIENTES.find(c=>c.id===p.clienteId);return `<option value="${p.id}">${p.numeroCNJ.substring(0,20)} — ${cli?cli.nome.split(' ')[0]:''}</option>`;}).join('');
   const respSel=document.getElementById('svc-responsavel');
   respSel.innerHTML='<option value="">Selecionar...</option>'+USUARIOS.filter(u=>u.ativo&&['Administrador','Advogado','Estagiário','Suporte'].includes(u.perfil)).map(u=>`<option value="${u.login}">${u.nome.split(' ').slice(0,2).join(' ')} (${u.perfil})</option>`).join('');
+  if(isNew) respSel.value=currentUser.login;
   if(!isNew){
     const s=SERVICOS.find(s=>s.id===id);
     document.getElementById('svc-processo').value=s.processoId;
