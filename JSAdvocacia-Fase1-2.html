@@ -2008,9 +2008,10 @@ function renderDashboardSuporte(){
       <div style="font-size:20px;font-weight:800;margin-bottom:3px">📞 Painel de Suporte</div>
       <div style="font-size:12px;opacity:.85">${currentUser.nome} · ${new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})}</div>
     </div>
-    <div style="display:flex;gap:20px;text-align:center">
+    <div style="display:flex;gap:16px;align-items:center;text-align:center">
       <div><div style="font-size:26px;font-weight:800">${pendentes}</div><div style="font-size:11px;opacity:.8">pendente(s)</div></div>
       <div><div style="font-size:26px;font-weight:800">${audPericia.length}</div><div style="font-size:11px;opacity:.8">evento(s) p/ avisar</div></div>
+      <button onclick="openServicoModal()" style="background:#fff;color:#16A34A;border:none;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">➕ Novo Serviço</button>
     </div>
   </div>
 
@@ -5225,11 +5226,20 @@ function renderAgenda(){
     ? PROCESSOS.filter(p=>p.parceiro===currentUser.nome).map(p=>p.id)
     : null;
   const isSuporteAgenda = currentUser.perfil==='Suporte';
+  const isAdminAgenda = currentUser.perfil==='Administrador';
+
+  // Unificar SERVICOS + SERVICOS_CLIENTE numa lista única para a agenda
+  // SERVICOS_CLIENTE não têm processoId — marcamos com _fromCliente=true
+  const svcClienteComData = SERVICOS_CLIENTE.filter(s=>s.data).map(s=>({...s,_fromCliente:true}));
+  const todosServicos = [...SERVICOS, ...svcClienteComData];
+
   const servicosFiltrados = isParceiro
-    ? SERVICOS.filter(s=>meusProcessosIds.includes(s.processoId))
+    ? todosServicos.filter(s=>!s._fromCliente && meusProcessosIds.includes(s.processoId))
     : isSuporteAgenda
-      ? SERVICOS.filter(s=>s.tipo!=='Prazo')
-      : SERVICOS;
+      ? todosServicos.filter(s=>s.tipo!=='Prazo' && (s.responsavel===currentUser.login || s._fromCliente))
+      : isAdminAgenda
+        ? todosServicos
+        : todosServicos.filter(s=>s.responsavel===currentUser.login);
 
   const hoje = new Date();
   const mesNomes = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -5272,15 +5282,21 @@ function renderAgenda(){
     const evtsDia = servicosFiltrados.filter(s=>s.data===agendaDiaSel);
     const dataFmt = new Date(agendaDiaSel+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'});
     const itens = evtsDia.length?evtsDia.map(s=>{
-      const cli=CLIENTES.find(c=>c.id===(PROCESSOS.find(p=>p.id===s.processoId)||{}).clienteId);
-      const proc=PROCESSOS.find(p=>p.id===s.processoId);
+      const proc = s._fromCliente ? null : PROCESSOS.find(p=>p.id===s.processoId);
+      const cli  = s._fromCliente
+        ? CLIENTES.find(c=>c.id===s.clienteId)
+        : CLIENTES.find(c=>c.id===(proc||{}).clienteId);
       const cls=s.tipo.toLowerCase().replace(/[êé]/g,'e').replace('ú','u').replace('ã','a').replace('ç','c');
-      return `<div style="background:var(--cinza-bg);border-radius:8px;padding:12px;margin-bottom:8px;border-left:4px solid var(--azul-medio)">
+      const resp = USUARIOS.find(u=>u.login===s.responsavel);
+      return `<div style="background:var(--cinza-bg);border-radius:8px;padding:12px;margin-bottom:8px;border-left:4px solid ${s._fromCliente?'#16A34A':'var(--azul-medio)'}">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
           <span class="cal-event ${cls}" style="font-size:12px;padding:3px 8px">${s.tipo}</span>
-          ${s.hora?`<span style="font-size:12px;font-weight:600">${s.hora}</span>`:''}
+          <div style="display:flex;gap:8px;align-items:center">
+            ${resp?`<span style="font-size:11px;color:var(--cinza-texto)">👤 ${resp.nome.split(' ')[0]}</span>`:''}
+            ${s.hora?`<span style="font-size:12px;font-weight:600">${s.hora}</span>`:''}
+          </div>
         </div>
-        <div style="font-size:13px;font-weight:600">${proc?proc.numeroCNJ.substring(0,30)+'...':'—'}</div>
+        <div style="font-size:13px;font-weight:600">${proc?proc.numeroCNJ.substring(0,30)+'...':s._fromCliente?'Serviço de Cliente':'—'}</div>
         <div style="font-size:12px;color:var(--cinza-texto)">${cli?cli.nome:'—'} ${s.local?'· '+s.local:''}</div>
         ${s.desc?`<div style="font-size:12px;color:var(--cinza-texto);margin-top:4px">${s.desc}</div>`:''}
         ${currentUser.perfil==='Parceiro'&&proc?`<button onclick="viewProcParceiro(${proc.id})" style="margin-top:8px;background:#2563A8;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer">🔍 Ver Processo e Inserir Informações</button>`:''}
