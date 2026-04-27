@@ -4,6 +4,97 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>JSAdvocacia — Sistema de Gestão v2.0</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  const SUPABASE_URL = 'https://mwbctvbukjcrkmxyjrrj.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im13YmN0dmJ1a2pjcmtteHlqcnJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyMjg1ODksImV4cCI6MjA5MjgwNDU4OX0.ir-bLav3qwYqO1HFPITBZ4qqdsW5TGDC4jI1ARhGmhw';
+  const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // ── PERSISTÊNCIA SUPABASE ────────────────────────────────────────
+  const DB = {
+    async carregar(tabela) {
+      const { data, error } = await _sb.from(tabela).select('*').order('id');
+      if (error) { console.warn('Erro ao carregar ' + tabela, error); return null; }
+      return data;
+    },
+    async inserir(tabela, obj) {
+      const { data, error } = await _sb.from(tabela).insert([obj]).select().single();
+      if (error) { console.warn('Erro ao inserir em ' + tabela, error); return null; }
+      return data;
+    },
+    async atualizar(tabela, id, obj) {
+      const { data, error } = await _sb.from(tabela).update(obj).eq('id', id).select().single();
+      if (error) { console.warn('Erro ao atualizar ' + tabela, error); return null; }
+      return data;
+    },
+    async deletar(tabela, id) {
+      const { error } = await _sb.from(tabela).delete().eq('id', id);
+      if (error) { console.warn('Erro ao deletar em ' + tabela, error); }
+      return !error;
+    }
+  };
+
+  // Carrega dados do banco ao iniciar
+  async function carregarDadosBanco() {
+    const [cli, proc, serv, svcCli, docs, prec, desp, leads_, tarefas_, log_] = await Promise.all([
+      DB.carregar('clientes'),
+      DB.carregar('processos'),
+      DB.carregar('servicos'),
+      DB.carregar('servicos_cliente'),
+      DB.carregar('documentos'),
+      DB.carregar('precatorios'),
+      DB.carregar('despesas'),
+      DB.carregar('leads'),
+      DB.carregar('tarefas'),
+      DB.carregar('log_atividades'),
+    ]);
+    // Mapear colunas snake_case -> camelCase
+    if (cli && cli.length) CLIENTES = cli.map(c => ({
+      id: c.id, nome: c.nome, cpf: c.cpf, nascimento: c.nascimento,
+      telefone: c.telefone, email: c.email, municipio: c.municipio, estado: c.estado,
+      logradouro: c.logradouro, numero: c.numero, bairro: c.bairro, cep: c.cep,
+      orgao: c.orgao, cargo: c.cargo, matricula: c.matricula, vinculo: c.vinculo,
+      ativo: c.ativo, origem: c.origem, obs: c.obs, dataCadastro: c.data_cadastro
+    }));
+    if (proc && proc.length) PROCESSOS = proc.map(p => ({
+      id: p.id, numeroCNJ: p.numero_cnj, clienteId: p.cliente_id,
+      parteAdversa: p.parte_adversa, tipoAcao: p.tipo_acao, fase: p.fase,
+      comarca: p.comarca, vara: p.vara, municipio: p.municipio,
+      valorCausa: p.valor_causa, honorariosPct: p.honorarios_pct,
+      honrariosVal: p.honorarios_val, ultimoAndamento: p.ultimo_andamento,
+      dataAndamento: p.data_andamento, link: p.link, status: p.status,
+      protocolo: p.protocolo, responsavelAdv: p.responsavel_adv,
+      parceiro: p.parceiro, obs: p.obs, checklist: p.checklist || []
+    }));
+    if (serv && serv.length) SERVICOS = serv.map(s => ({
+      id: s.id, processoId: s.processo_id, tipo: s.tipo, status: s.status,
+      responsavel: s.responsavel, data: s.data, hora: s.hora,
+      local: s.local, desc: s.descricao, obs: s.obs, criacao: s.created_at
+    }));
+    if (desp && desp.length) DESPESAS = desp.map(d => ({
+      id: d.id, categoria: d.categoria, descricao: d.descricao,
+      valor: d.valor, mes: d.mes, ano: d.ano, criacao: d.created_at
+    }));
+    if (leads_ && leads_.length) LEADS = leads_.map(l => ({
+      id: l.id, nome: l.nome, telefone: l.telefone, municipio: l.municipio,
+      tipoServidor: l.tipo_servidor, cargo: l.cargo, orgao: l.orgao,
+      direitoBuscado: l.direito_buscado, canal: l.canal, status: l.status,
+      obs: l.obs, data: l.data, responsavel: l.responsavel
+    }));
+    if (prec && prec.length) PRECATORIOS = prec.map(p => ({
+      id: p.id, tipo: p.tipo, clienteId: p.cliente_id, processoId: p.processo_id,
+      vara: p.vara, tribunal: p.tribunal, valorBruto: p.valor_bruto,
+      valorLiquido: p.valor_liquido, anoPrevisao: p.ano_previsao,
+      status: p.status, parceiro: p.parceiro, obs: p.obs, criacao: p.created_at
+    }));
+    console.log('✅ Dados carregados do Supabase:', { clientes: CLIENTES.length, processos: PROCESSOS.length });
+    if(typeof renderDashboard === 'function') renderDashboard();
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    setTimeout(carregarDadosBanco, 500);
+  });
+</script>
 <style>
   :root {
     --azul-escuro: #1A3A5C;
