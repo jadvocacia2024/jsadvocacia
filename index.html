@@ -66,15 +66,15 @@
       DB.carregar('tarefas'),
       DB.carregar('log_atividades'),
     ]);
-    // Mapear colunas snake_case -> camelCase
-    if (cli && cli.length) CLIENTES = cli.map(c => ({
+    // Mapear colunas snake_case -> camelCase (sempre sobrescreve, mesmo se vazio)
+    if (cli !== null) CLIENTES = (cli||[]).map(c => ({
       id: c.id, nome: c.nome, cpf: c.cpf, nascimento: c.nascimento,
       telefone: c.telefone, email: c.email, municipio: c.municipio, estado: c.estado,
       logradouro: c.logradouro, numero: c.numero, bairro: c.bairro, cep: c.cep,
       orgao: c.orgao, cargo: c.cargo, matricula: c.matricula, vinculo: c.vinculo,
       ativo: c.ativo, origem: c.origem, obs: c.obs, dataCadastro: c.data_cadastro
     }));
-    if (proc && proc.length) PROCESSOS = proc.map(p => ({
+    if (proc !== null) PROCESSOS = (proc||[]).map(p => ({
       id: p.id, numeroCNJ: p.numero_cnj, clienteId: p.cliente_id,
       parteAdversa: p.parte_adversa, tipoAcao: p.tipo_acao, fase: p.fase,
       comarca: p.comarca, vara: p.vara, municipio: p.municipio,
@@ -84,26 +84,34 @@
       protocolo: p.protocolo, responsavelAdv: p.responsavel_adv,
       parceiro: p.parceiro, obs: p.obs, checklist: p.checklist || []
     }));
-    if (serv && serv.length) SERVICOS = serv.map(s => ({
+    if (serv !== null) SERVICOS = (serv||[]).map(s => ({
       id: s.id, processoId: s.processo_id, tipo: s.tipo, status: s.status,
       responsavel: s.responsavel, data: s.data, hora: s.hora,
       local: s.local, desc: s.descricao, obs: s.obs, criacao: s.created_at
     }));
-    if (desp && desp.length) DESPESAS = desp.map(d => ({
+    if (desp !== null) DESPESAS = (desp||[]).map(d => ({
       id: d.id, categoria: d.categoria, descricao: d.descricao,
       valor: d.valor, mes: d.mes, ano: d.ano, criacao: d.created_at
     }));
-    if (leads_ && leads_.length) LEADS = leads_.map(l => ({
+    if (leads_ !== null) LEADS = (leads_||[]).map(l => ({
       id: l.id, nome: l.nome, telefone: l.telefone, municipio: l.municipio,
       tipoServidor: l.tipo_servidor, cargo: l.cargo, orgao: l.orgao,
       direitoBuscado: l.direito_buscado, canal: l.canal, status: l.status,
       obs: l.obs, data: l.data, responsavel: l.responsavel
     }));
-    if (prec && prec.length) PRECATORIOS = prec.map(p => ({
+    if (prec !== null) PRECATORIOS = (prec||[]).map(p => ({
       id: p.id, tipo: p.tipo, clienteId: p.cliente_id, processoId: p.processo_id,
       vara: p.vara, tribunal: p.tribunal, valorBruto: p.valor_bruto,
       valorLiquido: p.valor_liquido, anoPrevisao: p.ano_previsao,
       status: p.status, parceiro: p.parceiro, obs: p.obs, criacao: p.created_at
+    }));
+    if (svcCli !== null) SERVICOS_CLIENTE = (svcCli||[]).map(s => ({
+      id: s.id, clienteId: s.cliente_id, tipo: s.tipo, status: s.status,
+      responsavel: s.responsavel, data: s.data, desc: s.descricao, obs: s.obs, criacao: s.created_at
+    }));
+    if (docs !== null) DOCUMENTOS = (docs||[]).map(d => ({
+      id: d.id, nome: d.nome, tipo: d.tipo, clienteId: d.cliente_id,
+      processoId: d.processo_id, status: d.status, obs: d.obs, criacao: d.created_at
     }));
     console.log('✅ Dados carregados do Supabase:', { clientes: CLIENTES.length, processos: PROCESSOS.length });
     if(typeof renderDashboard === 'function') renderDashboard();
@@ -2607,19 +2615,19 @@ async function saveUser(){
   const perfil=document.getElementById('um-perfil').value;
   const senha=document.getElementById('um-senha').value;
   if(!nome||!login||!email){showToast('Preencha todos os campos obrigatórios','error');return;}
-  if(USUARIOS.find(u=>u.login===login&&u.id!==parseInt(id))){showToast('Este login já está em uso','error');return;}
+  if(USUARIOS.find(u=>u.login===login&&u.id!==id)){showToast('Este login já está em uso','error');return;}
 
   const SRK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im13YmN0dmJ1a2pjcmtteHlqcnJqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzIyODU4OSwiZXhwIjoyMDkyODA0NTg5fQ.jYuhTcyRKl6x18RsPcT8HA5I3Qfksvjos786ed6Fud0';
   const BASE='https://mwbctvbukjcrkmxyjrrj.supabase.co';
 
   if(id){
-    // Atualizar usuário existente
-    const u=USUARIOS.find(u=>u.id===parseInt(id));
+    // Atualizar usuário existente (id é UUID string)
+    const u=USUARIOS.find(u=>u.id===id);
     Object.assign(u,{nome,login,email,perfil});
-    await _sb.from('usuarios').update({nome,login,email,perfil}).eq('id',parseInt(id));
+    await _sb.from('usuarios').update({nome,login,email,perfil}).eq('id',id);
     if(senha){
-      // Atualizar senha via admin API
-      await fetch(`${BASE}/auth/v1/admin/users/${u.authId||''}`,{method:'PUT',headers:{'apikey':SRK,'Authorization':'Bearer '+SRK,'Content-Type':'application/json'},body:JSON.stringify({password:senha})});
+      const authId=u.auth_id||u.authId||'';
+      if(authId) await fetch(`${BASE}/auth/v1/admin/users/${authId}`,{method:'PUT',headers:{'apikey':SRK,'Authorization':'Bearer '+SRK,'Content-Type':'application/json'},body:JSON.stringify({password:senha})});
     }
     showToast('Usuário atualizado!','success');
   } else {
@@ -2630,9 +2638,10 @@ async function saveUser(){
     const authData=await authRes.json();
     if(!authRes.ok){showToast('Erro ao criar login: '+(authData.message||authData.msg||JSON.stringify(authData)),'error');return;}
     // 2. Inserir na tabela usuarios
-    const {data:dbUser,error:dbErr}=await _sb.from('usuarios').insert({nome,login,email,perfil,ativo:true}).select().single();
+    const authId=authData.id;
+    const {data:dbUser,error:dbErr}=await _sb.from('usuarios').insert({nome,login,email,perfil,ativo:true,auth_id:authId}).select().single();
     if(dbErr){showToast('Erro ao salvar no banco: '+dbErr.message,'error');return;}
-    USUARIOS.push({id:dbUser.id,nome,login,email,perfil,ativo:true,principal:false});
+    USUARIOS.push({id:dbUser.id,nome,login,email,perfil,ativo:true,principal:false,auth_id:authId});
     showToast('Usuário '+nome+' criado com sucesso! Já pode fazer login.','success');
   }
   closeModal('user-modal');
@@ -2871,15 +2880,26 @@ function openClienteModal(id=null){
 }
 function editCliente(id){openClienteModal(id);}
 
-function saveCliente(){
+async function saveCliente(){
   const id=document.getElementById('cli-id').value;
   const nome=document.getElementById('cli-nome').value.trim();
   const cpf=document.getElementById('cli-cpf').value.trim();
   const telefone=document.getElementById('cli-telefone').value.trim();
   if(!nome||!cpf||!telefone){showToast('Preencha nome, CPF e telefone','error');return;}
   const dados={nome,cpf,nascimento:document.getElementById('cli-nascimento').value,telefone,email:document.getElementById('cli-email').value,municipio:document.getElementById('cli-municipio').value,estado:document.getElementById('cli-estado').value,cep:document.getElementById('cli-cep').value,logradouro:document.getElementById('cli-logradouro').value,numero:document.getElementById('cli-numero').value,orgao:document.getElementById('cli-orgao').value,cargo:document.getElementById('cli-cargo').value,matricula:document.getElementById('cli-matricula').value,vinculo:document.getElementById('cli-vinculo').value,origem:document.getElementById('cli-origem').value,ativo:document.getElementById('cli-ativo').value==='true',obs:document.getElementById('cli-obs').value};
-  if(id){Object.assign(CLIENTES.find(c=>c.id===parseInt(id)),dados);showToast('Cliente atualizado!','success');registrarLog('edit','Clientes','Editou cliente '+dados.nome);}
-  else{CLIENTES.push({id:nextClienteId++,...dados,dataCadastro:new Date().toISOString().slice(0,10)});showToast('Cliente cadastrado!','success');registrarLog('create','Clientes','Cadastrou cliente '+dados.nome);}
+  const dbDados={nome:dados.nome,cpf:dados.cpf,nascimento:dados.nascimento||null,telefone:dados.telefone,email:dados.email,municipio:dados.municipio,estado:dados.estado,cep:dados.cep,logradouro:dados.logradouro,numero:dados.numero,bairro:'',orgao:dados.orgao,cargo:dados.cargo,matricula:dados.matricula,vinculo:dados.vinculo,origem:dados.origem,ativo:dados.ativo,obs:dados.obs};
+  if(id){
+    const idn=parseInt(id);
+    Object.assign(CLIENTES.find(c=>c.id===idn),dados);
+    await DB.atualizar('clientes',idn,dbDados);
+    showToast('Cliente atualizado!','success');registrarLog('edit','Clientes','Editou cliente '+dados.nome);
+  } else {
+    const dbDadosNew={...dbDados,data_cadastro:new Date().toISOString().slice(0,10)};
+    const novo=await DB.inserir('clientes',dbDadosNew);
+    if(!novo){showToast('Erro ao salvar cliente no banco','error');return;}
+    CLIENTES.push({id:novo.id,...dados,dataCadastro:novo.data_cadastro||dbDadosNew.data_cadastro});
+    showToast('Cliente cadastrado!','success');registrarLog('create','Clientes','Cadastrou cliente '+dados.nome);
+  }
   closeModal('cliente-modal');renderClientes();
 }
 function toggleCliente(id){
@@ -2979,25 +2999,43 @@ function openServicoClienteModal(clienteId,svcId=null){
   }
   openModal('cli-svc-modal');
 }
-function saveServicoCliente(){
+async function saveServicoCliente(){
   const id=document.getElementById('csvc-id').value;
   const clienteId=parseInt(document.getElementById('csvc-clienteId').value);
   const tipo=document.getElementById('csvc-tipo').value;
   const data=document.getElementById('csvc-data').value;
   if(!tipo||!data){showToast('Preencha tipo e data','error');return;}
   const dados={clienteId,tipo,status:document.getElementById('csvc-status').value,responsavel:document.getElementById('csvc-responsavel').value,data,desc:document.getElementById('csvc-desc').value,obs:document.getElementById('csvc-obs').value};
-  if(id){Object.assign(SERVICOS_CLIENTE.find(s=>s.id===parseInt(id)),dados);showToast('Serviço atualizado!','success');}
-  else{SERVICOS_CLIENTE.push({id:nextSvcCliId++,...dados,criacao:new Date().toISOString().slice(0,10)});showToast('Serviço adicionado!','success');}
+  const dbDados={cliente_id:dados.clienteId,tipo:dados.tipo,status:dados.status,responsavel:dados.responsavel,data:dados.data,descricao:dados.desc,obs:dados.obs};
+  if(id){
+    const idn=parseInt(id);
+    Object.assign(SERVICOS_CLIENTE.find(s=>s.id===idn),dados);
+    await DB.atualizar('servicos_cliente',idn,dbDados);
+    showToast('Serviço atualizado!','success');
+  } else {
+    const novo=await DB.inserir('servicos_cliente',dbDados);
+    if(!novo){showToast('Erro ao salvar serviço no banco','error');return;}
+    SERVICOS_CLIENTE.push({id:novo.id,...dados,criacao:novo.created_at||new Date().toISOString().slice(0,10)});
+    showToast('Serviço adicionado!','success');
+  }
   closeModal('cli-svc-modal');
   cvTab('cv-servicos',clienteId);
 }
 function avancarStatusCliSvc(svcId,clienteId){
   const s=SERVICOS_CLIENTE.find(s=>s.id===svcId);
   const prox=s.status==='A Fazer'?'Em Andamento':s.status==='Em Andamento'?'Concluído':'A Fazer';
-  showConfirm('Atualizar Status',`Mover para <b>${prox}</b>?`,()=>{s.status=prox;showToast('Status: '+prox,'success');cvTab('cv-servicos',clienteId);});
+  showConfirm('Atualizar Status',`Mover para <b>${prox}</b>?`,async()=>{
+    s.status=prox;
+    await DB.atualizar('servicos_cliente',svcId,{status:prox});
+    showToast('Status: '+prox,'success');cvTab('cv-servicos',clienteId);
+  });
 }
 function deleteServicoCliente(svcId,clienteId){
-  showConfirm('Excluir Serviço','Excluir este serviço?',()=>{SERVICOS_CLIENTE=SERVICOS_CLIENTE.filter(s=>s.id!==svcId);showToast('Serviço excluído.','success');cvTab('cv-servicos',clienteId);});
+  showConfirm('Excluir Serviço','Excluir este serviço?',async()=>{
+    await DB.deletar('servicos_cliente',svcId);
+    SERVICOS_CLIENTE=SERVICOS_CLIENTE.filter(s=>s.id!==svcId);
+    showToast('Serviço excluído.','success');cvTab('cv-servicos',clienteId);
+  });
 }
 
 function deleteCliente(id){
@@ -3138,21 +3176,26 @@ function openProcessoModal(id=null){
 }
 function editProcesso(id){openProcessoModal(id);}
 
-function saveProcesso(){
+async function saveProcesso(){
   const id=document.getElementById('proc-id').value;
   const cnj=document.getElementById('proc-cnj').value.trim();
   const cliId=document.getElementById('proc-cliente').value;
   const adversa=document.getElementById('proc-adversa').value;
   if(!cnj||!cliId||!adversa){showToast('Preencha CNJ, cliente e parte adversa','error');return;}
-  const dados={numeroCNJ:cnj,clienteId:parseInt(cliId),responsavelAdv:currentUser.perfil==='Advogado'?currentUser.login:(PROCESSOS.find(x=>x.id===parseInt(document.getElementById('proc-id').value))||{}).responsavelAdv||'carlos',parteAdversa:adversa,tipoAcao:document.getElementById('proc-tipo').value,fase:document.getElementById('proc-fase').value,comarca:document.getElementById('proc-comarca').value,vara:document.getElementById('proc-vara').value,municipio:document.getElementById('proc-municipio').value,valorCausa:document.getElementById('proc-valor').value,honorariosPct:document.getElementById('proc-honorarios-pct').value,honrariosVal:document.getElementById('proc-honorarios-val').value,ultimoAndamento:document.getElementById('proc-andamento').value,dataAndamento:document.getElementById('proc-and-data').value,link:document.getElementById('proc-link').value,status:document.getElementById('proc-status').value,protocolo:document.getElementById('proc-protocolo').value,parceiro:document.getElementById('proc-parceiro').value,obs:document.getElementById('proc-obs').value};
+  const dados={numeroCNJ:cnj,clienteId:parseInt(cliId),responsavelAdv:currentUser.perfil==='Advogado'?currentUser.login:(PROCESSOS.find(x=>x.id===parseInt(id))||{}).responsavelAdv||currentUser.login,parteAdversa:adversa,tipoAcao:document.getElementById('proc-tipo').value,fase:document.getElementById('proc-fase').value,comarca:document.getElementById('proc-comarca').value,vara:document.getElementById('proc-vara').value,municipio:document.getElementById('proc-municipio').value,valorCausa:document.getElementById('proc-valor').value,honorariosPct:document.getElementById('proc-honorarios-pct').value,honrariosVal:document.getElementById('proc-honorarios-val').value,ultimoAndamento:document.getElementById('proc-andamento').value,dataAndamento:document.getElementById('proc-and-data').value,link:document.getElementById('proc-link').value,status:document.getElementById('proc-status').value,protocolo:document.getElementById('proc-protocolo').value,parceiro:document.getElementById('proc-parceiro').value,obs:document.getElementById('proc-obs').value};
+  const dbDados={numero_cnj:dados.numeroCNJ,cliente_id:dados.clienteId,responsavel_adv:dados.responsavelAdv,parte_adversa:dados.parteAdversa,tipo_acao:dados.tipoAcao,fase:dados.fase,comarca:dados.comarca,vara:dados.vara,municipio:dados.municipio,valor_causa:dados.valorCausa,honorarios_pct:dados.honorariosPct,honorarios_val:dados.honrariosVal,ultimo_andamento:dados.ultimoAndamento,data_andamento:dados.dataAndamento||null,link:dados.link,status:dados.status,protocolo:dados.protocolo||null,parceiro:dados.parceiro,obs:dados.obs};
   if(id){
-    const p=PROCESSOS.find(p=>p.id===parseInt(id));
+    const idn=parseInt(id);
+    const p=PROCESSOS.find(p=>p.id===idn);
     Object.assign(p,dados);
+    await DB.atualizar('processos',idn,{...dbDados,checklist:p.checklist});
     showToast('Processo atualizado!','success');
   } else {
     const tipo=dados.tipoAcao;
     const chkList=(CHECKLIST_PADRAO[tipo]||CHECKLIST_PADRAO['default']).map(doc=>({doc,ok:false}));
-    PROCESSOS.push({id:nextProcessoId++,...dados,checklist:chkList});
+    const novo=await DB.inserir('processos',{...dbDados,checklist:chkList});
+    if(!novo){showToast('Erro ao salvar processo no banco','error');return;}
+    PROCESSOS.push({id:novo.id,...dados,checklist:chkList});
     showToast('Processo cadastrado!','success');
   }
   closeModal('processo-modal');renderProcessos();
@@ -3354,22 +3397,36 @@ function openServicoModal(id=null,preProcessoId=null){
 }
 function editServico(id){openServicoModal(id);}
 
-function saveServico(){
+async function saveServico(){
   const id=document.getElementById('svc-id').value;
   const procId=document.getElementById('svc-processo').value;
   const tipo=document.getElementById('svc-tipo').value;
   const data=document.getElementById('svc-data').value;
   if(!procId||!tipo||!data){showToast('Preencha processo, tipo e data','error');return;}
   const dados={processoId:parseInt(procId),tipo,status:document.getElementById('svc-status').value,responsavel:document.getElementById('svc-responsavel').value,data,hora:document.getElementById('svc-hora').value,local:document.getElementById('svc-local').value,desc:document.getElementById('svc-desc').value,obs:document.getElementById('svc-obs').value};
-  if(id){Object.assign(SERVICOS.find(s=>s.id===parseInt(id)),dados);showToast('Serviço atualizado!','success');}
-  else{SERVICOS.push({id:nextServicoId++,...dados,criacao:new Date().toISOString().slice(0,10)});showToast('Serviço cadastrado!','success');}
+  const dbDados={processo_id:dados.processoId,tipo:dados.tipo,status:dados.status,responsavel:dados.responsavel,data:dados.data,hora:dados.hora||null,local:dados.local,descricao:dados.desc,obs:dados.obs};
+  if(id){
+    const idn=parseInt(id);
+    Object.assign(SERVICOS.find(s=>s.id===idn),dados);
+    await DB.atualizar('servicos',idn,dbDados);
+    showToast('Serviço atualizado!','success');
+  } else {
+    const novo=await DB.inserir('servicos',dbDados);
+    if(!novo){showToast('Erro ao salvar serviço no banco','error');return;}
+    SERVICOS.push({id:novo.id,...dados,criacao:novo.created_at||new Date().toISOString().slice(0,10)});
+    showToast('Serviço cadastrado!','success');
+  }
   closeModal('servico-modal');renderServicos();
 }
 
 function avancarStatus(id){
   const s=SERVICOS.find(s=>s.id===id);
   const prox=s.status==='A Fazer'?'Em Andamento':s.status==='Em Andamento'?'Concluído':'A Fazer';
-  showConfirm('Atualizar Status',`Mover serviço para <b>${prox}</b>?`,()=>{s.status=prox;showToast(`Status: ${prox}`,'success');renderServicos();});
+  showConfirm('Atualizar Status',`Mover serviço para <b>${prox}</b>?`,async()=>{
+    s.status=prox;
+    await DB.atualizar('servicos',id,{status:prox});
+    showToast(`Status: ${prox}`,'success');renderServicos();
+  });
 }
 
 function deleteServico(id){
@@ -4031,14 +4088,24 @@ function openLeadModal(id=null){
   openModal('lead-modal');
 }
 
-function saveLead(){
+async function saveLead(){
   const id=document.getElementById('lead-id').value;
   const nome=document.getElementById('lead-nome').value.trim();
   const telefone=document.getElementById('lead-telefone').value.trim();
   if(!nome||!telefone){showToast('Preencha nome e telefone','error');return;}
   const dados={nome,telefone,municipio:document.getElementById('lead-municipio').value,tipoServidor:document.getElementById('lead-tipoServidor').value,cargo:document.getElementById('lead-cargo').value,orgao:document.getElementById('lead-orgao').value,direitoBuscado:document.getElementById('lead-direitoBuscado').value,canal:document.getElementById('lead-canal').value,status:document.getElementById('lead-status').value,data:document.getElementById('lead-data').value,obs:document.getElementById('lead-obs').value,responsavel:currentUser.login};
-  if(id){Object.assign(LEADS.find(l=>l.id===parseInt(id)),dados);showToast('Lead atualizado!','success');}
-  else{LEADS.push({id:nextLeadId++,...dados});showToast('Lead cadastrado!','success');}
+  const dbDados={nome:dados.nome,telefone:dados.telefone,municipio:dados.municipio,tipo_servidor:dados.tipoServidor,cargo:dados.cargo,orgao:dados.orgao,direito_buscado:dados.direitoBuscado,canal:dados.canal,status:dados.status,data:dados.data||null,obs:dados.obs,responsavel:dados.responsavel};
+  if(id){
+    const idn=parseInt(id);
+    Object.assign(LEADS.find(l=>l.id===idn),dados);
+    await DB.atualizar('leads',idn,dbDados);
+    showToast('Lead atualizado!','success');
+  } else {
+    const novo=await DB.inserir('leads',dbDados);
+    if(!novo){showToast('Erro ao salvar lead no banco','error');return;}
+    LEADS.push({id:novo.id,...dados});
+    showToast('Lead cadastrado!','success');
+  }
   closeModal('lead-modal');renderPreAtendimento();
 }
 
@@ -5037,7 +5104,7 @@ function openDespesaModal(id=null){
   openModal('despesa-modal');
 }
 
-function saveDespesa(){
+async function saveDespesa(){
   const id=document.getElementById('despesa-id').value;
   const cat=document.getElementById('despesa-cat').value;
   const desc=document.getElementById('despesa-desc').value.trim();
@@ -5046,8 +5113,17 @@ function saveDespesa(){
   const ano=parseInt(document.getElementById('despesa-ano').value)||0;
   if(!desc||!valor||!mes||!ano){showToast('Preencha todos os campos obrigatórios','error');return;}
   const dados={categoria:cat,descricao:desc,valor,mes,ano};
-  if(id){Object.assign(DESPESAS.find(d=>d.id===parseInt(id)),dados);showToast('Despesa atualizada!','success');}
-  else{DESPESAS.push({id:nextDespesaId++,...dados,criacao:new Date().toISOString().slice(0,10)});showToast('Despesa registrada!','success');}
+  if(id){
+    const idn=parseInt(id);
+    Object.assign(DESPESAS.find(d=>d.id===idn),dados);
+    await DB.atualizar('despesas',idn,dados);
+    showToast('Despesa atualizada!','success');
+  } else {
+    const novo=await DB.inserir('despesas',dados);
+    if(!novo){showToast('Erro ao salvar despesa no banco','error');return;}
+    DESPESAS.push({id:novo.id,...dados,criacao:novo.created_at||new Date().toISOString().slice(0,10)});
+    showToast('Despesa registrada!','success');
+  }
   closeModal('despesa-modal');renderFinanceiro();
 }
 
@@ -5089,15 +5165,25 @@ function openPrecModal(id=null){
   openModal('prec-modal');
 }
 
-function savePrec(){
+async function savePrec(){
   const id=document.getElementById('prec-id').value;
   const clienteId=parseInt(document.getElementById('prec-cliente').value);
   const tipo=document.getElementById('prec-tipo').value;
   const vara=document.getElementById('prec-vara').value.trim();
   if(!clienteId||!vara){showToast('Preencha cliente e vara','error');return;}
   const dados={tipo,clienteId,processoId:parseInt(document.getElementById('prec-processo').value)||null,vara,tribunal:document.getElementById('prec-tribunal').value,valorBruto:parseFloat(document.getElementById('prec-valorBruto').value)||0,valorLiquido:parseFloat(document.getElementById('prec-valorLiquido').value)||0,anoPrevisao:parseInt(document.getElementById('prec-anoPrevisao').value)||0,status:document.getElementById('prec-status').value,parceiro:document.getElementById('prec-parceiro').value,obs:document.getElementById('prec-obs').value};
-  if(id){Object.assign(PRECATORIOS.find(p=>p.id===parseInt(id)),dados);showToast('Registro atualizado!','success');}
-  else{PRECATORIOS.push({id:nextPrecId++,...dados,criacao:new Date().toISOString().slice(0,10)});showToast('Registro cadastrado!','success');}
+  const dbDados={tipo:dados.tipo,cliente_id:dados.clienteId,processo_id:dados.processoId,vara:dados.vara,tribunal:dados.tribunal,valor_bruto:dados.valorBruto,valor_liquido:dados.valorLiquido,ano_previsao:dados.anoPrevisao,status:dados.status,parceiro:dados.parceiro,obs:dados.obs};
+  if(id){
+    const idn=parseInt(id);
+    Object.assign(PRECATORIOS.find(p=>p.id===idn),dados);
+    await DB.atualizar('precatorios',idn,dbDados);
+    showToast('Registro atualizado!','success');
+  } else {
+    const novo=await DB.inserir('precatorios',dbDados);
+    if(!novo){showToast('Erro ao salvar registro no banco','error');return;}
+    PRECATORIOS.push({id:novo.id,...dados,criacao:novo.created_at||new Date().toISOString().slice(0,10)});
+    showToast('Registro cadastrado!','success');
+  }
   closeModal('prec-modal');renderFinanceiro();
 }
 
@@ -5325,14 +5411,24 @@ function openDocModal(id=null){
   openModal('doc-modal');
 }
 
-function saveDoc(){
+async function saveDoc(){
   const id=document.getElementById('doc-id').value;
   const nome=document.getElementById('doc-nome').value.trim();
   const clienteId=parseInt(document.getElementById('doc-cliente').value);
   if(!nome||!clienteId){showToast('Preencha nome e cliente','error');return;}
   const dados={nome,tipo:document.getElementById('doc-tipo').value,clienteId,processoId:parseInt(document.getElementById('doc-processo').value)||null,status:document.getElementById('doc-status').value,obs:document.getElementById('doc-obs').value};
-  if(id){Object.assign(DOCUMENTOS.find(d=>d.id===parseInt(id)),dados);showToast('Documento atualizado!','success');}
-  else{DOCUMENTOS.push({id:nextDocId++,...dados,criacao:new Date().toISOString().slice(0,10)});showToast('Documento adicionado!','success');}
+  const dbDados={nome:dados.nome,tipo:dados.tipo,cliente_id:dados.clienteId,processo_id:dados.processoId,status:dados.status,obs:dados.obs};
+  if(id){
+    const idn=parseInt(id);
+    Object.assign(DOCUMENTOS.find(d=>d.id===idn),dados);
+    await DB.atualizar('documentos',idn,dbDados);
+    showToast('Documento atualizado!','success');
+  } else {
+    const novo=await DB.inserir('documentos',dbDados);
+    if(!novo){showToast('Erro ao salvar documento no banco','error');return;}
+    DOCUMENTOS.push({id:novo.id,...dados,criacao:novo.created_at||new Date().toISOString().slice(0,10)});
+    showToast('Documento adicionado!','success');
+  }
   closeModal('doc-modal');renderDocumentos();
 }
 
