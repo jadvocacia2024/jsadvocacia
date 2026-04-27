@@ -113,6 +113,16 @@
       id: d.id, nome: d.nome, tipo: d.tipo, clienteId: d.cliente_id,
       processoId: d.processo_id, status: d.status, obs: d.obs, criacao: d.created_at
     }));
+    if (tarefas_ !== null) {
+      TAREFAS_POR_USER = {};
+      (tarefas_||[]).forEach(t => {
+        const owner = t.responsavel||'';
+        if(!TAREFAS_POR_USER[owner]) TAREFAS_POR_USER[owner]={'A Fazer':[],'Em Andamento':[],'Concluído':[]};
+        const col = t.status||'A Fazer';
+        if(!TAREFAS_POR_USER[owner][col]) TAREFAS_POR_USER[owner][col]=[];
+        TAREFAS_POR_USER[owner][col].push({id:t.id,titulo:t.titulo,data:t.data,criador:t.criador||'',responsavel:t.responsavel||'',etiqueta:''});
+      });
+    }
     console.log('✅ Dados carregados do Supabase:', { clientes: CLIENTES.length, processos: PROCESSOS.length });
     if(typeof renderDashboard === 'function') renderDashboard();
   }
@@ -2338,7 +2348,7 @@ function openKanbanModal(status, ownerLogin=null){
   openModal('kanban-modal');
 }
 
-function saveKanban(){
+async function saveKanban(){
   const t=document.getElementById('km-titulo').value.trim();
   const s=document.getElementById('km-status').value;
   const owner=document.getElementById('km-owner-login').value||currentUser.login;
@@ -2346,10 +2356,10 @@ function saveKanban(){
   const data=document.getElementById('km-data').value||new Date().toISOString().slice(0,10);
   const etiqueta=document.getElementById('km-etiqueta').value.trim();
   if(!t){showToast('Digite o título da tarefa','error');return;}
-  // Tarefas criadas pelo admin para outro user: salvar no board do responsável
-  const targetLogin = (currentUser.perfil==='Administrador' && responsavel!==currentUser.login) ? responsavel : owner;
-  getUserBoard(targetLogin)[s].unshift({id:nextTarefa++,titulo:t,data,criador:currentUser.login,responsavel,etiqueta});
-  // Se admin criou para si também registrar no seu board com label
+  const targetLogin=(currentUser.perfil==='Administrador'&&responsavel!==currentUser.login)?responsavel:owner;
+  const novo=await DB.inserir('tarefas',{titulo:t,status:s,responsavel:targetLogin,criador:currentUser.login,data});
+  const id=novo?novo.id:nextTarefa++;
+  getUserBoard(targetLogin)[s].unshift({id,titulo:t,data,criador:currentUser.login,responsavel:targetLogin,etiqueta});
   closeModal('kanban-modal');
   showToast('Tarefa adicionada!','success');
   renderDashboard();
@@ -2362,9 +2372,11 @@ function moverTarefa(id, colAtual, ownerLogin=null){
   const prox=cols[(cols.indexOf(colAtual)+1)%3];
   const card=board[colAtual].find(c=>c.id===id);
   if(!card) return;
-  showConfirm('Mover Tarefa',`Mover "<b>${card.titulo}</b>" para <b>${prox}</b>?`,()=>{
+  showConfirm('Mover Tarefa',`Mover "<b>${card.titulo}</b>" para <b>${prox}</b>?`,async()=>{
     board[colAtual]=board[colAtual].filter(c=>c.id!==id);
+    card.status=prox;
     board[prox].unshift(card);
+    await DB.atualizar('tarefas',id,{status:prox});
     showToast(`Tarefa movida para "${prox}"!`,'success');
     renderDashboard();
   });
@@ -2375,7 +2387,8 @@ function deleteTarefa(id, col, ownerLogin=null){
   const board=getUserBoard(owner);
   const card=board[col].find(c=>c.id===id);
   if(!card) return;
-  showConfirm('Excluir Tarefa',`Excluir "<b>${card.titulo}</b>"?`,()=>{
+  showConfirm('Excluir Tarefa',`Excluir "<b>${card.titulo}</b>"?`,async()=>{
+    await DB.deletar('tarefas',id);
     board[col]=board[col].filter(c=>c.id!==id);
     showToast('Tarefa excluída.','success');
     renderDashboard();
