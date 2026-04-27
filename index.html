@@ -1251,9 +1251,7 @@ async function doLogin() {
   }
 
   await carregarDadosBanco();
-  document.getElementById('login-screen').style.display='none';
-  document.getElementById('app').style.display='flex';
-  renderDashboard();
+  initApp();
   fbSetStatus('online');
 }
 
@@ -1289,9 +1287,7 @@ _sb.auth.getSession().then(async ({ data: { session } }) => {
     if (perfil) {
       currentUser = { id: perfil.id, nome: perfil.nome, login: perfil.login, email: perfil.email, perfil: perfil.perfil, ativo: perfil.ativo };
       await carregarDadosBanco();
-      document.getElementById('login-screen').style.display='none';
-      document.getElementById('app').style.display='flex';
-      renderDashboard();
+      initApp();
       fbSetStatus('online');
     }
   }
