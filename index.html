@@ -2418,7 +2418,7 @@ function buildKanbanBoard(board, ownerLogin, showBadges=false){
   ];
   let html=`<div class="kanban-board"><div class="kanban-cols">`;
   colInfo.forEach(({col,cor,bg})=>{
-    const cards=board[col]||[];
+    const cards=(board[col]||[]).slice().sort((a,b)=>(a.data||'9999').localeCompare(b.data||'9999'));
     html+=`<div class="kanban-col" style="background:${bg}">
       <div class="kanban-col-header">
         <span class="kanban-col-title" style="color:${cor}">${col}</span>
