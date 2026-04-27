@@ -2634,11 +2634,28 @@ async function saveUser(){
     if(!senha){showToast('Informe uma senha para o novo usuário','error');return;}
     showToast('Criando usuário...','info');
     // 1. Criar no Supabase Auth
+    let authId=null;
     const authRes=await fetch(`${BASE}/auth/v1/admin/users`,{method:'POST',headers:{'apikey':SRK,'Authorization':'Bearer '+SRK,'Content-Type':'application/json'},body:JSON.stringify({email,password:senha,email_confirm:true})});
     const authData=await authRes.json();
-    if(!authRes.ok){showToast('Erro ao criar login: '+(authData.message||authData.msg||JSON.stringify(authData)),'error');return;}
-    // 2. Inserir na tabela usuarios
-    const authId=authData.id;
+    if(!authRes.ok){
+      // Se e-mail já existe no Auth, buscar o usuário existente e atualizar a senha
+      const jaExiste=authData.message&&authData.message.toLowerCase().includes('already');
+      if(!jaExiste){showToast('Erro ao criar login: '+(authData.message||JSON.stringify(authData)),'error');return;}
+      // Buscar lista de usuários para encontrar o auth_id pelo e-mail
+      const listRes=await fetch(`${BASE}/auth/v1/admin/users?page=1&per_page=1000`,{headers:{'apikey':SRK,'Authorization':'Bearer '+SRK}});
+      const listData=await listRes.json();
+      const existente=(listData.users||[]).find(u=>u.email===email);
+      if(!existente){showToast('E-mail já cadastrado no sistema de autenticação','error');return;}
+      authId=existente.id;
+      // Atualizar senha do usuário existente
+      await fetch(`${BASE}/auth/v1/admin/users/${authId}`,{method:'PUT',headers:{'apikey':SRK,'Authorization':'Bearer '+SRK,'Content-Type':'application/json'},body:JSON.stringify({password:senha})});
+    } else {
+      authId=authData.id;
+    }
+    // 2. Verificar se já existe na tabela usuarios (evitar duplicata)
+    const {data:existeDB}=await _sb.from('usuarios').select('id').eq('email',email).maybeSingle();
+    if(existeDB){showToast('E-mail já possui cadastro no sistema. Use "Editar" para atualizar.','error');return;}
+    // 3. Inserir na tabela usuarios
     const {data:dbUser,error:dbErr}=await _sb.from('usuarios').insert({nome,login,email,perfil,ativo:true,auth_id:authId}).select().single();
     if(dbErr){showToast('Erro ao salvar no banco: '+dbErr.message,'error');return;}
     USUARIOS.push({id:dbUser.id,nome,login,email,perfil,ativo:true,principal:false,auth_id:authId});
