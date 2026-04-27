@@ -2599,7 +2599,7 @@ function openUserModal(id=null){
 }
 function editUser(id){openUserModal(id);}
 
-function saveUser(){
+async function saveUser(){
   const id=document.getElementById('um-id').value;
   const nome=document.getElementById('um-nome').value.trim();
   const login=document.getElementById('um-login').value.trim();
@@ -2608,14 +2608,32 @@ function saveUser(){
   const senha=document.getElementById('um-senha').value;
   if(!nome||!login||!email){showToast('Preencha todos os campos obrigatórios','error');return;}
   if(USUARIOS.find(u=>u.login===login&&u.id!==parseInt(id))){showToast('Este login já está em uso','error');return;}
+
+  const SRK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im13YmN0dmJ1a2pjcmtteHlqcnJqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzIyODU4OSwiZXhwIjoyMDkyODA0NTg5fQ.jYuhTcyRKl6x18RsPcT8HA5I3Qfksvjos786ed6Fud0';
+  const BASE='https://mwbctvbukjcrkmxyjrrj.supabase.co';
+
   if(id){
+    // Atualizar usuário existente
     const u=USUARIOS.find(u=>u.id===parseInt(id));
     Object.assign(u,{nome,login,email,perfil});
+    await _sb.from('usuarios').update({nome,login,email,perfil}).eq('id',parseInt(id));
+    if(senha){
+      // Atualizar senha via admin API
+      await fetch(`${BASE}/auth/v1/admin/users/${u.authId||''}`,{method:'PUT',headers:{'apikey':SRK,'Authorization':'Bearer '+SRK,'Content-Type':'application/json'},body:JSON.stringify({password:senha})});
+    }
     showToast('Usuário atualizado!','success');
   } else {
     if(!senha){showToast('Informe uma senha para o novo usuário','error');return;}
-    USUARIOS.push({id:nextUserId++,nome,login,email,perfil,ativo:true,principal:false});
-    showToast('Usuário criado com sucesso! Crie a conta no Firebase para liberar o acesso.','success');
+    showToast('Criando usuário...','info');
+    // 1. Criar no Supabase Auth
+    const authRes=await fetch(`${BASE}/auth/v1/admin/users`,{method:'POST',headers:{'apikey':SRK,'Authorization':'Bearer '+SRK,'Content-Type':'application/json'},body:JSON.stringify({email,password:senha,email_confirm:true})});
+    const authData=await authRes.json();
+    if(!authRes.ok){showToast('Erro ao criar login: '+(authData.message||authData.msg||JSON.stringify(authData)),'error');return;}
+    // 2. Inserir na tabela usuarios
+    const {data:dbUser,error:dbErr}=await _sb.from('usuarios').insert({nome,login,email,perfil,ativo:true}).select().single();
+    if(dbErr){showToast('Erro ao salvar no banco: '+dbErr.message,'error');return;}
+    USUARIOS.push({id:dbUser.id,nome,login,email,perfil,ativo:true,principal:false});
+    showToast('Usuário '+nome+' criado com sucesso! Já pode fazer login.','success');
   }
   closeModal('user-modal');
   renderUsuarios();
