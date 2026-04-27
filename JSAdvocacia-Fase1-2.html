@@ -2650,7 +2650,8 @@ function toggleUser(id){
 
 function deleteUser(id){
   const u=USUARIOS.find(u=>u.id===id);
-  showConfirm('Excluir Usuário',`Excluir permanentemente <b>${u.nome}</b>? Esta ação não pode ser desfeita.`,()=>{
+  showConfirm('Excluir Usuário',`Excluir permanentemente <b>${u.nome}</b>? Esta ação não pode ser desfeita.`,async()=>{
+    await DB.deletar('usuarios',id);
     USUARIOS=USUARIOS.filter(u=>u.id!==id);
     showToast('Usuário excluído.','success');
     renderUsuarios();
@@ -3001,7 +3002,12 @@ function deleteServicoCliente(svcId,clienteId){
 
 function deleteCliente(id){
   const c=CLIENTES.find(c=>c.id===id);
-  showConfirm('Excluir Cliente',`Excluir <b>${c.nome}</b>? Esta ação não pode ser desfeita.`,()=>{CLIENTES=CLIENTES.filter(c=>c.id!==id);showToast('Cliente excluído.','success');renderClientes();});
+  showConfirm('Excluir Cliente',`Excluir <b>${c.nome}</b>? Esta ação não pode ser desfeita.`,async()=>{
+    await DB.deletar('clientes',id);
+    CLIENTES=CLIENTES.filter(c=>c.id!==id);
+    showToast('Cliente excluído.','success');
+    renderClientes();
+  });
 }
 
 // ════════════════════════════════════
@@ -3246,7 +3252,10 @@ function toggleDoc(procId,idx){
 
 function deleteProcesso(id){
   const p=PROCESSOS.find(p=>p.id===id);
-  showConfirm('Excluir Processo',`Excluir processo <b>${p.numeroCNJ}</b>? Os serviços vinculados também serão removidos.`,()=>{
+  showConfirm('Excluir Processo',`Excluir processo <b>${p.numeroCNJ}</b>? Os serviços vinculados também serão removidos.`,async()=>{
+    const svsIds=SERVICOS.filter(s=>s.processoId===id).map(s=>s.id);
+    for(const sid of svsIds) await DB.deletar('servicos',sid);
+    await DB.deletar('processos',id);
     PROCESSOS=PROCESSOS.filter(p=>p.id!==id);
     SERVICOS=SERVICOS.filter(s=>s.processoId!==id);
     showToast('Processo excluído.','success');renderProcessos();
@@ -3364,7 +3373,11 @@ function avancarStatus(id){
 }
 
 function deleteServico(id){
-  showConfirm('Excluir Serviço','Excluir este serviço?',()=>{SERVICOS=SERVICOS.filter(s=>s.id!==id);showToast('Serviço excluído.','success');renderServicos();});
+  showConfirm('Excluir Serviço','Excluir este serviço?',async()=>{
+    await DB.deletar('servicos',id);
+    SERVICOS=SERVICOS.filter(s=>s.id!==id);
+    showToast('Serviço excluído.','success');renderServicos();
+  });
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -4050,7 +4063,12 @@ function converterLead(id){
 }
 
 function deleteLead(id){
-  showConfirm('Excluir Lead','Excluir este lead?',()=>{LEADS=LEADS.filter(l=>l.id!==id);showToast('Lead excluído.','success');renderPreAtendimento();});
+  showConfirm('Excluir Lead','Excluir este lead?',async()=>{
+    await DB.deletar('leads',id);
+    LEADS=LEADS.filter(l=>l.id!==id);
+    showToast('Lead excluído.','success');
+    renderPreAtendimento();
+  });
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -5034,7 +5052,11 @@ function saveDespesa(){
 }
 
 function deleteDespesa(id){
-  showConfirm('Excluir Despesa','Excluir este lançamento de despesa?',()=>{DESPESAS=DESPESAS.filter(d=>d.id!==id);showToast('Excluído.','success');renderFinanceiro();});
+  showConfirm('Excluir Despesa','Excluir este lançamento de despesa?',async()=>{
+    await DB.deletar('despesas',id);
+    DESPESAS=DESPESAS.filter(d=>d.id!==id);
+    showToast('Excluído.','success');renderFinanceiro();
+  });
 }
 
 function openPrecModal(id=null){
@@ -5080,7 +5102,11 @@ function savePrec(){
 }
 
 function deletePrec(id){
-  showConfirm('Excluir Registro','Excluir este registro financeiro?',()=>{PRECATORIOS=PRECATORIOS.filter(p=>p.id!==id);showToast('Excluído.','success');renderFinanceiro();});
+  showConfirm('Excluir Registro','Excluir este registro financeiro?',async()=>{
+    await DB.deletar('precatorios',id);
+    PRECATORIOS=PRECATORIOS.filter(p=>p.id!==id);
+    showToast('Excluído.','success');renderFinanceiro();
+  });
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -5311,7 +5337,11 @@ function saveDoc(){
 }
 
 function deleteDoc(id){
-  showConfirm('Excluir Documento','Excluir este documento?',()=>{DOCUMENTOS=DOCUMENTOS.filter(d=>d.id!==id);showToast('Excluído.','success');renderDocumentos();});
+  showConfirm('Excluir Documento','Excluir este documento?',async()=>{
+    await DB.deletar('documentos',id);
+    DOCUMENTOS=DOCUMENTOS.filter(d=>d.id!==id);
+    showToast('Excluído.','success');renderDocumentos();
+  });
 }
 
 // ════════════════════════════════════
