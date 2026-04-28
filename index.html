@@ -72,8 +72,8 @@
       id: c.id, nome: c.nome, cpf: c.cpf, nascimento: c.nascimento,
       telefone: c.telefone, email: c.email, municipio: c.municipio, estado: c.estado,
       logradouro: c.logradouro, numero: c.numero, bairro: c.bairro, cep: c.cep,
-      orgao: c.orgao, cargo: c.cargo, matricula: c.matricula, vinculo: c.vinculo,
-      ativo: c.ativo, origem: c.origem, obs: c.obs, dataCadastro: c.data_cadastro
+      orgao: c.orgao, cargo: c.cargo, rg: c.rg, estadoCivil: c.estado_civil,
+      vinculo: c.vinculo, ativo: c.ativo, origem: c.origem, obs: c.obs, dataCadastro: c.data_cadastro
     }));
     if (proc !== null) PROCESSOS = (proc||[]).map(p => ({
       id: p.id, numeroCNJ: p.numero_cnj, clienteId: p.cliente_id,
@@ -3007,15 +3007,17 @@ function openClienteModal(id=null){
   const isNew=!id;
   document.getElementById('cli-modal-title').textContent=isNew?'Novo Cliente':'Editar Cliente';
   document.getElementById('cli-id').value=id||'';
-  const fields=['nome','cpf','nascimento','telefone','email','municipio','estado','cep','logradouro','numero','orgao','cargo','matricula','obs'];
+  const fields=['nome','cpf','rg','nascimento','telefone','email','municipio','estado','cep','logradouro','numero','bairro','orgao','cargo','obs'];
   if(!isNew){
     const c=CLIENTES.find(c=>c.id===id);
     fields.forEach(f=>{const el=document.getElementById('cli-'+f);if(el)el.value=c[f]||'';});
+    document.getElementById('cli-estado-civil').value=c.estadoCivil||'';
     document.getElementById('cli-origem').value=c.origem||'';
     document.getElementById('cli-vinculo').value=c.vinculo||'';
     document.getElementById('cli-ativo').value=c.ativo?'true':'false';
   } else {
     fields.forEach(f=>{const el=document.getElementById('cli-'+f);if(el)el.value='';});
+    document.getElementById('cli-estado-civil').value='';
     document.getElementById('cli-origem').value='';
     document.getElementById('cli-vinculo').value='';
     document.getElementById('cli-ativo').value='true';
@@ -3030,8 +3032,8 @@ async function saveCliente(){
   const cpf=document.getElementById('cli-cpf').value.trim();
   const telefone=document.getElementById('cli-telefone').value.trim();
   if(!nome||!cpf||!telefone){showToast('Preencha nome, CPF e telefone','error');return;}
-  const dados={nome,cpf,nascimento:document.getElementById('cli-nascimento').value,telefone,email:document.getElementById('cli-email').value,municipio:document.getElementById('cli-municipio').value,estado:document.getElementById('cli-estado').value,cep:document.getElementById('cli-cep').value,logradouro:document.getElementById('cli-logradouro').value,numero:document.getElementById('cli-numero').value,orgao:document.getElementById('cli-orgao').value,cargo:document.getElementById('cli-cargo').value,matricula:document.getElementById('cli-matricula').value,vinculo:document.getElementById('cli-vinculo').value,origem:document.getElementById('cli-origem').value,ativo:document.getElementById('cli-ativo').value==='true',obs:document.getElementById('cli-obs').value};
-  const dbDados={nome:dados.nome,cpf:dados.cpf,nascimento:dados.nascimento||null,telefone:dados.telefone,email:dados.email,municipio:dados.municipio,estado:dados.estado,cep:dados.cep,logradouro:dados.logradouro,numero:dados.numero,bairro:'',orgao:dados.orgao,cargo:dados.cargo,matricula:dados.matricula,vinculo:dados.vinculo,origem:dados.origem,ativo:dados.ativo,obs:dados.obs};
+  const dados={nome,cpf,rg:document.getElementById('cli-rg').value,estadoCivil:document.getElementById('cli-estado-civil').value,nascimento:document.getElementById('cli-nascimento').value,telefone,email:document.getElementById('cli-email').value,municipio:document.getElementById('cli-municipio').value,estado:document.getElementById('cli-estado').value,cep:document.getElementById('cli-cep').value,logradouro:document.getElementById('cli-logradouro').value,numero:document.getElementById('cli-numero').value,bairro:document.getElementById('cli-bairro').value,orgao:document.getElementById('cli-orgao').value,cargo:document.getElementById('cli-cargo').value,vinculo:document.getElementById('cli-vinculo').value,origem:document.getElementById('cli-origem').value,ativo:document.getElementById('cli-ativo').value==='true',obs:document.getElementById('cli-obs').value};
+  const dbDados={nome:dados.nome,cpf:dados.cpf,rg:dados.rg,estado_civil:dados.estadoCivil,nascimento:dados.nascimento||null,telefone:dados.telefone,email:dados.email,municipio:dados.municipio,estado:dados.estado,cep:dados.cep,logradouro:dados.logradouro,numero:dados.numero,bairro:dados.bairro,orgao:dados.orgao,cargo:dados.cargo,vinculo:dados.vinculo,origem:dados.origem,ativo:dados.ativo,obs:dados.obs};
   if(id){
     const idn=parseInt(id);
     Object.assign(CLIENTES.find(c=>c.id===idn),dados);
@@ -3071,15 +3073,16 @@ function _renderCvBody(clienteId,c,activeTab){
     <div class="info-grid" style="margin-bottom:16px">
       <div><span class="info-label">Nome</span><span class="info-value">${c.nome||'—'}</span></div>
       <div><span class="info-label">CPF</span><span class="info-value">${c.cpf||'—'}</span></div>
+      <div><span class="info-label">RG</span><span class="info-value">${c.rg||'—'}</span></div>
+      <div><span class="info-label">Estado Civil</span><span class="info-value">${c.estadoCivil||'—'}</span></div>
       <div><span class="info-label">Nascimento</span><span class="info-value">${c.nascimento||'—'}</span></div>
       <div><span class="info-label">Telefone</span><span class="info-value">${c.telefone||'—'}</span></div>
       <div><span class="info-label">E-mail</span><span class="info-value">${c.email||'—'}</span></div>
       <div><span class="info-label">Município/UF</span><span class="info-value">${c.municipio||'—'} / ${c.estado||'—'}</span></div>
-      <div><span class="info-label">Endereço</span><span class="info-value">${c.logradouro?c.logradouro+', '+c.numero:'—'}</span></div>
+      <div><span class="info-label">Endereço</span><span class="info-value">${c.logradouro?c.logradouro+', '+c.numero+(c.bairro?', '+c.bairro:''):'—'}</span></div>
       <div><span class="info-label">CEP</span><span class="info-value">${c.cep||'—'}</span></div>
       <div><span class="info-label">Órgão</span><span class="info-value">${c.orgao||'—'}</span></div>
       <div><span class="info-label">Cargo</span><span class="info-value">${c.cargo||'—'}</span></div>
-      <div><span class="info-label">Matrícula</span><span class="info-value">${c.matricula||'—'}</span></div>
       <div><span class="info-label">Vínculo</span><span class="info-value">${c.vinculo||'—'}</span></div>
       <div><span class="info-label">Origem</span><span class="info-value">${c.origem||'—'}</span></div>
       <div><span class="info-label">Status</span><span class="info-value"><span class="badge ${c.ativo?'badge-ativo':'badge-inativo'}">${c.ativo?'Ativo':'Inativo'}</span></span></div>
@@ -4156,7 +4159,7 @@ function exportarClientes(){
     {label:'Nome',key:'nome'},{label:'CPF',key:'cpf'},{label:'Nascimento',key:'nascimento'},
     {label:'Telefone',key:'telefone'},{label:'E-mail',key:'email'},{label:'Município',key:'municipio'},
     {label:'Estado',key:'estado'},{label:'Órgão',key:'orgao'},{label:'Cargo',key:'cargo'},
-    {label:'Matrícula',key:'matricula'},{label:'Vínculo',key:'vinculo'},{label:'Origem',key:'origem'},
+    {label:'RG',key:'rg'},{label:'Estado Civil',key:'estadoCivil'},{label:'Bairro',key:'bairro'},{label:'Vínculo',key:'vinculo'},{label:'Origem',key:'origem'},
     {label:'Status',key:'ativo',fn:d=>d.ativo?'Ativo':'Inativo'},{label:'Data Cadastro',key:'dataCadastro'}
   ],'clientes_'+new Date().toISOString().slice(0,10)+'.csv');
 }
@@ -6162,6 +6165,7 @@ document.getElementById('confirm-overlay').addEventListener('click',function(e){
       <div class="form-section">
         <div class="form-section-title">👤 Dados Pessoais</div>
         <div class="field-group"><div class="field"><label>Nome Completo *</label><input type="text" id="cli-nome" placeholder="Nome completo do cliente"></div><div class="field"><label>CPF *</label><input type="text" id="cli-cpf" placeholder="000.000.000-00"></div></div>
+        <div class="field-group"><div class="field"><label>RG</label><input type="text" id="cli-rg" placeholder="00.000.000-0"></div><div class="field"><label>Estado Civil</label><select id="cli-estado-civil"><option value="">Selecionar...</option><option>Solteiro(a)</option><option>Casado(a)</option><option>Divorciado(a)</option><option>Viúvo(a)</option><option>União Estável</option></select></div></div>
         <div class="field-group"><div class="field"><label>Data de Nascimento</label><input type="date" id="cli-nascimento"></div><div class="field"><label>Origem / Canal</label><select id="cli-origem"><option value="">Selecionar...</option><option>Indicação</option><option>Redes Sociais</option><option>Site</option><option>Anúncio</option><option>WhatsApp</option><option>Outro</option></select></div></div>
       </div>
       <div class="form-section">
@@ -6172,11 +6176,12 @@ document.getElementById('confirm-overlay').addEventListener('click',function(e){
         <div class="form-section-title">📍 Endereço</div>
         <div class="field-3"><div class="field"><label>Município *</label><input type="text" id="cli-municipio" placeholder="Cidade"></div><div class="field"><label>Estado (UF)</label><input type="text" id="cli-estado" placeholder="SP" maxlength="2"></div><div class="field"><label>CEP</label><input type="text" id="cli-cep" placeholder="00000-000"></div></div>
         <div class="field-group"><div class="field"><label>Logradouro</label><input type="text" id="cli-logradouro" placeholder="Rua, Av..."></div><div class="field"><label>Número / Complemento</label><input type="text" id="cli-numero" placeholder="123, Apto 4B"></div></div>
+        <div class="field"><label>Bairro</label><input type="text" id="cli-bairro" placeholder="Bairro"></div>
       </div>
       <div class="form-section">
         <div class="form-section-title">🏛️ Vínculo Funcional</div>
         <div class="field-group"><div class="field"><label>Órgão / Ente Público *</label><input type="text" id="cli-orgao" placeholder="Ex: Prefeitura Municipal de SP"></div><div class="field"><label>Cargo / Função *</label><input type="text" id="cli-cargo" placeholder="Ex: Professora, Agente Administrativo"></div></div>
-        <div class="field-group"><div class="field"><label>Matrícula</label><input type="text" id="cli-matricula" placeholder="Nº de matrícula funcional"></div><div class="field"><label>Tipo de Vínculo</label><select id="cli-vinculo"><option value="">Selecionar...</option><option>Estatutário</option><option>Celetista</option><option>Comissionado</option><option>Aposentado</option><option>Pensionista</option></select></div></div>
+        <div class="field"><label>Tipo de Vínculo</label><select id="cli-vinculo"><option value="">Selecionar...</option><option>Estatutário</option><option>Celetista</option><option>Comissionado</option><option>Aposentado</option><option>Pensionista</option></select></div>
       </div>
       <div class="form-section">
         <div class="form-section-title">📝 Observações</div>
