@@ -3498,7 +3498,7 @@ function buildServicosHTML(){
         <div class="table-search" style="flex-wrap:wrap;gap:8px">
           <select class="select-filter" onchange="filtroServicos.tipo=this.value;renderDashboard()">
             <option value="">Todos os tipos</option>
-            ${['Audiência','Perícia','Prazo','Diligência','Suporte'].map(t=>`<option ${filtroServicos.tipo===t?'selected':''}>${t}</option>`).join('')}
+            ${['Audiência','Perícia','Prazo','Diligência','Suporte','Cálculo'].map(t=>`<option ${filtroServicos.tipo===t?'selected':''}>${t}</option>`).join('')}
           </select>
           <select class="select-filter" onchange="filtroServicos.status=this.value;renderDashboard()">
             <option value="">Todos os status</option>
@@ -6174,7 +6174,7 @@ document.getElementById('confirm-overlay').addEventListener('click',function(e){
     </div>
     <div class="modal-body">
       <input type="hidden" id="svc-id">
-      <div class="field-group"><div class="field"><label>Processo *</label><select id="svc-processo"><option value="">Selecionar processo...</option></select></div><div class="field"><label>Tipo de Serviço *</label><select id="svc-tipo"><option value="">Selecionar...</option><option>Audiência</option><option>Perícia</option><option>Prazo</option><option>Diligência</option><option>Suporte</option></select></div></div>
+      <div class="field-group"><div class="field"><label>Processo *</label><select id="svc-processo"><option value="">Selecionar processo...</option></select></div><div class="field"><label>Tipo de Serviço *</label><select id="svc-tipo"><option value="">Selecionar...</option><option>Audiência</option><option>Perícia</option><option>Prazo</option><option>Diligência</option><option>Suporte</option><option>Cálculo</option></select></div></div>
       <div class="field-group"><div class="field"><label>Data *</label><input type="date" id="svc-data"></div><div class="field"><label>Hora</label><input type="time" id="svc-hora" placeholder="14:00"></div></div>
       <div class="field-group"><div class="field"><label>Responsável</label><select id="svc-responsavel"><option value="">Selecionar...</option></select></div><div class="field"><label>Status</label><select id="svc-status"><option value="A Fazer">A Fazer</option><option value="Em Andamento">Em Andamento</option><option value="Concluído">Concluído</option></select></div></div>
       <div class="field"><label>Local / Vara</label><input type="text" id="svc-local" placeholder="Ex: 1ª Vara da Fazenda Pública — SP"></div>
