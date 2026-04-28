@@ -4327,24 +4327,25 @@ function renderSuporte(){
   }
 
   // Painel de aniversariantes (próximos 30 dias)
-  const mesAtual = hoje.getMonth()+1;
-  const diaAtual = hoje.getDate();
+  const hojeStr = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+  const getAnivDate = c => {
+    const [,mes,dia]=c.nascimento.split('-').map(Number);
+    let d = new Date(hojeStr.getFullYear(), mes-1, dia);
+    if(d < hojeStr) d = new Date(hojeStr.getFullYear()+1, mes-1, dia);
+    return d;
+  };
+  const getDiff = c => Math.round((getAnivDate(c)-hojeStr)/(864e5));
   const anivList = CLIENTES.filter(c=>{
     if(!c.nascimento) return false;
     const parts = c.nascimento.split('-');
     if(parts.length<3) return false;
-    const mes=parseInt(parts[1]), dia=parseInt(parts[2]);
-    const diff = (mes-mesAtual)*30+(dia-diaAtual);
+    const diff = getDiff(c);
     return diff>=0 && diff<=30;
-  }).sort((a,b)=>{
-    const [,mA,dA]=a.nascimento.split('-').map(Number);
-    const [,mB,dB]=b.nascimento.split('-').map(Number);
-    return (mA-mesAtual)*30+(dA-diaAtual)-(mB-mesAtual)*30-(dB-diaAtual);
-  });
+  }).sort((a,b)=>getAnivDate(a)-getAnivDate(b));
 
   const anivHtml = anivList.length ? anivList.map(c=>{
     const [,mes,dia]=c.nascimento.split('-').map(Number);
-    const diff=(mes-mesAtual)*30+(dia-diaAtual);
+    const diff=getDiff(c);
     const cls = diff===0?'aniv-hoje':diff<=7?'aniv-semana':'aniv-mes';
     const avCor = ['#2563A8','#16A34A','#D97706','#7C3AED','#DC2626'];
     const avC   = avCor[c.id%5];
