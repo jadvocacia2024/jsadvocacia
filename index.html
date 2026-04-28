@@ -3484,7 +3484,8 @@ function buildServicosHTML(){
   if(isParceiro) return '';
   const loginsSup = USUARIOS.filter(u=>u.perfil==='Suporte').map(u=>u.login);
 
-  let list=SERVICOS.filter(s=>{
+  // Serviços de processo
+  let listProc=SERVICOS.filter(s=>{
     if((isEstag||isAdvogado) && loginsSup.includes(s.responsavel)) return false;
     if(isSup && !loginsSup.includes(s.responsavel)) return false;
     if(isSup && s.tipo==='Prazo') return false;
@@ -3492,25 +3493,40 @@ function buildServicosHTML(){
     const okS=!filtroServicos.status||s.status===filtroServicos.status;
     const okP=!filtroServicos.processoId||s.processoId===parseInt(filtroServicos.processoId);
     return okT&&okS&&okP;
-  }).sort((a,b)=>a.data<b.data?-1:1);
+  }).map(s=>({...s,_origem:'processo'}));
+
+  // Serviços da pasta do cliente (excluindo os gerados automaticamente de processo para não duplicar)
+  let listCli=SERVICOS_CLIENTE.filter(s=>{
+    if(s.obs&&s.obs.startsWith('[Auto]')) return false; // já vem do processo
+    if(isSup && !loginsSup.includes(s.responsavel)) return false;
+    const okT=!filtroServicos.tipo||s.tipo===filtroServicos.tipo;
+    const okS=!filtroServicos.status||s.status===filtroServicos.status;
+    if(isAdvogado||isEstag) return okT&&okS && s.responsavel===currentUser.login;
+    return okT&&okS;
+  }).map(s=>({...s,_origem:'cliente'}));
+
+  const list=[...listProc,...listCli].sort((a,b)=>(a.data||'').localeCompare(b.data||''));
 
   const rows=list.map(s=>{
-    const p=PROCESSOS.find(p=>p.id===s.processoId);
-    const cli=p?CLIENTES.find(c=>c.id===p.clienteId):null;
+    const p=s._origem==='processo'?PROCESSOS.find(p=>p.id===s.processoId):null;
+    const cli=p?CLIENTES.find(c=>c.id===p.clienteId):CLIENTES.find(c=>c.id===s.clienteId);
     const resp=USUARIOS.find(u=>u.login===s.responsavel);
+    const origemBadge=s._origem==='cliente'?`<span style="font-size:10px;background:#EDE9FE;color:#7C3AED;border-radius:4px;padding:1px 5px;margin-left:4px">pasta</span>`:'';
+    const acoes=s._origem==='processo'
+      ?`${!isSup?`<button class="btn-edit" onclick="editServico(${s.id})">✏️</button>`:''}
+         <button class="btn-secondary" style="font-size:12px;padding:6px 10px" onclick="avancarStatus(${s.id})">${s.status==='A Fazer'?'▶ Iniciar':s.status==='Em Andamento'?'✅ Concluir':'↩ Reabrir'}</button>
+         ${podeExcluirInfo()?`<button class="btn-danger" onclick="deleteServico(${s.id})">🗑</button>`:''}`
+      :`<button class="btn-secondary" style="font-size:12px;padding:6px 10px" onclick="avancarStatusCliSvc(${s.id},${s.clienteId})">${s.status==='A Fazer'?'▶ Iniciar':s.status==='Em Andamento'?'✅ Concluir':'↩ Reabrir'}</button>
+        ${podeExcluirInfo()?`<button class="btn-danger" onclick="deleteServicoCliente(${s.id},${s.clienteId})">🗑</button>`:''}`;
     return `<tr>
-      <td><span class="tipo-badge ${tipoClass(s.tipo)}">${s.tipo}</span></td>
+      <td><span class="tipo-badge ${tipoClass(s.tipo)}">${s.tipo}</span>${origemBadge}</td>
       <td style="font-size:12px">${p?p.numeroCNJ.substring(0,16)+'...':'—'}</td>
       <td style="font-size:13px">${cli?cli.nome.split(' ').slice(0,2).join(' '):'—'}</td>
       <td style="font-size:12px">${p?p.parteAdversa.substring(0,20)+'...':'—'}</td>
       <td style="font-size:12px">${s.data?new Date(s.data+'T12:00:00').toLocaleDateString('pt-BR'):'—'} ${s.hora||''}</td>
       <td><span class="badge ${stClass(s.status)}">${s.status}</span></td>
-      <td style="font-size:12px">${resp?resp.nome.split(' ').slice(0,2).join(' '):'—'}</td>
-      <td><div class="td-actions">
-        ${!isSup?`<button class="btn-edit" onclick="editServico(${s.id})">✏️</button>`:''}
-        <button class="btn-secondary" style="font-size:12px;padding:6px 10px" onclick="avancarStatus(${s.id})">${s.status==='A Fazer'?'▶ Iniciar':s.status==='Em Andamento'?'✅ Concluir':'↩ Reabrir'}</button>
-        ${podeExcluirInfo()?`<button class="btn-danger" onclick="deleteServico(${s.id})">🗑</button>`:''}
-      </div></td>
+      <td style="font-size:12px">${resp?resp.nome.split(' ').slice(0,2).join(' '):(s.responsavel||'—')}</td>
+      <td><div class="td-actions">${acoes}</div></td>
     </tr>`;
   }).join('');
 
@@ -3524,7 +3540,7 @@ function buildServicosHTML(){
         <div class="table-search" style="flex-wrap:wrap;gap:8px">
           <select class="select-filter" onchange="filtroServicos.tipo=this.value;renderDashboard()">
             <option value="">Todos os tipos</option>
-            ${['Audiência','Perícia','Prazo','Diligência','Suporte','Cálculo'].map(t=>`<option ${filtroServicos.tipo===t?'selected':''}>${t}</option>`).join('')}
+            ${['Audiência','Perícia','Prazo','Diligência','Suporte','Cálculo','Analisar Documentos','Solicitar Documento','Fazer Ação'].map(t=>`<option ${filtroServicos.tipo===t?'selected':''}>${t}</option>`).join('')}
           </select>
           <select class="select-filter" onchange="filtroServicos.status=this.value;renderDashboard()">
             <option value="">Todos os status</option>
