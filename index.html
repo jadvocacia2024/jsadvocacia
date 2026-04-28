@@ -1194,7 +1194,7 @@ let ESCRITORIO = {
 };
 
 // ── META MENSAL ──────────────────────────────────────────────────
-let META_MENSAL = {meta:20, protocolados:14};
+let META_MENSAL = {meta:20};
 
 // ── PRÉ-ATENDIMENTO ─────────────────────────────────────────────
 let LEADS = [
@@ -1545,8 +1545,13 @@ function renderDashboard() {
   if(currentUser.perfil==='Advogado'){renderDashboardAdvogado();return;}
   const isAdmin = currentUser.perfil==='Administrador';
   const isEstagiario = currentUser.perfil==='Estagiário';
-  // Meta real e editável
-  const meta=META_MENSAL.meta, prot=META_MENSAL.protocolados, pct=Math.round(prot/meta*100);
+  // Meta real e editável — protocolados calculados do mês corrente
+  const meta=META_MENSAL.meta;
+  const mesAtualMeta=hoje.getMonth(), anoAtualMeta=hoje.getFullYear();
+  const prot=PROCESSOS.filter(p=>{ if(!p.protocolo) return false; const d=new Date(p.protocolo+'T00:00:00'); return d.getMonth()===mesAtualMeta && d.getFullYear()===anoAtualMeta; }).length;
+  const pct=meta>0?Math.round(prot/meta*100):0;
+  const mesesPT=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const labelMesMeta=mesesPT[mesAtualMeta]+' '+anoAtualMeta;
   const _brd=getUserBoard(currentUser.login); const pendentes = (_brd['A Fazer']||[]).length + (_brd['Em Andamento']||[]).length;
   const totalCli = CLIENTES.length;
   const ativosCli = CLIENTES.filter(c=>c.ativo).length;
@@ -1582,7 +1587,7 @@ function renderDashboard() {
     html+=`
     <div class="meta-card">
       <div class="meta-header">
-        <span class="meta-title">📊 Meta Mensal de Protocolos — Abril 2026</span>
+        <span class="meta-title">📊 Meta Mensal de Protocolos — ${labelMesMeta}</span>
         <span class="meta-edit" onclick="editarMeta()">✏️ Editar meta</span>
       </div>
       <div class="meta-progress"><div class="meta-bar${pct>=100?' completa':''}" style="width:${Math.min(pct,100)}%"></div></div>
