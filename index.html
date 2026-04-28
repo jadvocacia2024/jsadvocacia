@@ -2166,7 +2166,7 @@ function renderDashboardSuporte(){
   </div>`;
 
   // Lista de serviços do Suporte
-  const svcsPend = meusSvcs.filter(s=>s.status!=='Concluído').sort((a,b)=>a.data.localeCompare(b.data));
+  const svcsPend = meusSvcs.filter(s=>s.status!=='Concluído').sort((a,b)=>(a.data||'').localeCompare(b.data||''));
   if(svcsPend.length===0){
     html+=`<div style="text-align:center;padding:40px;background:#f8fafc;border-radius:12px;color:var(--cinza-texto)">
       <div style="font-size:36px;margin-bottom:10px">✅</div>
