@@ -2105,8 +2105,12 @@ function renderDashboardSuporte(){
   const loginsSup = USUARIOS.filter(u=>u.perfil==='Suporte').map(u=>u.login);
   const hoje = new Date();
 
-  // Serviços atribuídos ao Suporte (excluindo Prazo — não é responsabilidade do Suporte)
-  const meusSvcs = SERVICOS.filter(s=>loginsSup.includes(s.responsavel) && s.tipo!=='Prazo');
+  // Serviços atribuídos ao Suporte — inclui SERVICOS (processo) e SERVICOS_CLIENTE (pasta)
+  const svcsPasta = SERVICOS_CLIENTE.filter(s=>loginsSup.includes(s.responsavel) && !s.obs?.startsWith('[Auto]'));
+  const meusSvcs = [
+    ...SERVICOS.filter(s=>loginsSup.includes(s.responsavel) && s.tipo!=='Prazo'),
+    ...svcsPasta.map(s=>({...s,_fromCliente:true}))
+  ];
   const pendentes = meusSvcs.filter(s=>s.status!=='Concluído').length;
   const concluidos = meusSvcs.filter(s=>s.status==='Concluído').length;
 
@@ -2171,11 +2175,14 @@ function renderDashboardSuporte(){
   } else {
     html+=`<div style="display:grid;gap:10px">`;
     svcsPend.forEach(s=>{
-      const proc=PROCESSOS.find(p=>p.id===s.processoId);
-      const cli=CLIENTES.find(c=>c.id===(proc||{}).clienteId);
+      const proc=s._fromCliente?null:PROCESSOS.find(p=>p.id===s.processoId);
+      const cli=s._fromCliente?CLIENTES.find(c=>c.id===s.clienteId):CLIENTES.find(c=>c.id===(proc||{}).clienteId);
       const cor=COR[s.tipo]||{bg:'#f1f5f9',tc:'#475569',icon:'📌'};
       const dias=s.data?Math.ceil((new Date(s.data+'T12:00:00')-hoje)/(1000*60*60*24)):null;
       const urgente=dias!==null&&dias<=1;
+      const btnAvancar=s._fromCliente
+        ?`<button class="btn-secondary" style="font-size:11px;padding:4px 10px;margin-top:8px" onclick="avancarStatusCliSvc(${s.id},${s.clienteId});renderDashboardSuporte()">${s.status==='A Fazer'?'▶ Iniciar':'✅ Concluir'}</button>`
+        :`<button class="btn-secondary" style="font-size:11px;padding:4px 10px;margin-top:8px" onclick="avancarStatus(${s.id})">${s.status==='A Fazer'?'▶ Iniciar':'✅ Concluir'}</button>`;
       html+=`<div style="background:#fff;border-radius:10px;border:1px solid ${urgente?'#FCA5A5':'#e5e7eb'};padding:16px 18px;display:flex;gap:14px;align-items:flex-start;box-shadow:0 1px 4px rgba(0,0,0,.05)">
         <div style="background:${cor.bg};border-radius:8px;width:42px;height:42px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">${cor.icon}</div>
         <div style="flex:1">
@@ -2183,6 +2190,7 @@ function renderDashboardSuporte(){
             <div>
               <span style="font-size:12px;font-weight:700;color:${cor.tc};background:${cor.bg};border-radius:999px;padding:2px 10px">${s.tipo}</span>
               <span style="font-size:11px;background:${s.status==='A Fazer'?'#FEF9C3':s.status==='Em Andamento'?'#DBEAFE':'#D1FAE5'};color:${s.status==='A Fazer'?'#92400E':s.status==='Em Andamento'?'#1D4ED8':'#065F46'};border-radius:999px;padding:2px 8px;margin-left:6px">${s.status}</span>
+              ${s._fromCliente?'<span style="font-size:10px;background:#EDE9FE;color:#7C3AED;border-radius:4px;padding:1px 5px;margin-left:4px">pasta</span>':''}
             </div>
             ${s.data?`<div style="font-size:11px;font-weight:700;color:${urgente?'#DC2626':'var(--cinza-texto)'}">
               ${dias<0?`⚠️ Vencido ${Math.abs(dias)}d`:dias===0?'⚠️ HOJE':dias===1?'Amanhã':new Date(s.data+'T12:00:00').toLocaleDateString('pt-BR')}
@@ -2190,9 +2198,10 @@ function renderDashboardSuporte(){
             </div>`:''}
           </div>
           <div style="font-size:13px;color:#111827;font-weight:500;margin-bottom:4px">${s.desc||'—'}</div>
-          <div style="font-size:12px;color:var(--cinza-texto)">${cli?'👤 '+cli.nome:'—'} ${proc?'· '+proc.numeroCNJ.substring(0,18)+'...':'—'}</div>
+          <div style="font-size:12px;color:var(--cinza-texto)">${cli?'👤 '+cli.nome:'—'} ${proc?'· '+proc.numeroCNJ.substring(0,18)+'...':''}</div>
           ${cli&&cli.telefone?`<div style="font-size:12px;color:#16A34A;margin-top:2px">📱 ${cli.telefone}</div>`:''}
-          ${s.obs?`<div style="font-size:12px;color:var(--cinza-texto);margin-top:6px;padding:6px 10px;background:#f8fafc;border-radius:6px">${s.obs}</div>`:''}
+          ${s.obs&&!s.obs.startsWith('[Auto]')?`<div style="font-size:12px;color:var(--cinza-texto);margin-top:6px;padding:6px 10px;background:#f8fafc;border-radius:6px">${s.obs}</div>`:''}
+          ${btnAvancar}
         </div>
       </div>`;
     });
