@@ -54,7 +54,7 @@
 
   // Carrega dados do banco ao iniciar
   async function carregarDadosBanco() {
-    const [cli, proc, serv, svcCli, docs, prec, desp, leads_, tarefas_, log_, users_] = await Promise.all([
+    const [cli, proc, serv, svcCli, docs, prec, desp, leads_, tarefas_, log_, users_, cads_] = await Promise.all([
       DB.carregar('clientes'),
       DB.carregar('processos'),
       DB.carregar('servicos'),
@@ -66,6 +66,7 @@
       DB.carregar('tarefas'),
       DB.carregar('log_atividades'),
       DB.carregar('usuarios'),
+      DB.carregar('cadastros'),
     ]);
     // Mapear colunas snake_case -> camelCase (sempre sobrescreve, mesmo se vazio)
     if (cli !== null) CLIENTES = (cli||[]).map(c => ({
@@ -135,6 +136,12 @@
         if(!TAREFAS_POR_USER[owner][col]) TAREFAS_POR_USER[owner][col]=[];
         TAREFAS_POR_USER[owner][col].push({id:t.id,titulo:t.titulo,data:t.data,criador:t.criador||'',responsavel:t.responsavel||'',etiqueta:''});
       });
+    }
+    if (cads_ !== null && cads_.length) {
+      // Rebuild CADASTROS from DB, preserving keys
+      const map = {tiposAcao:'tiposAcao', fases:'fases', partesAdversas:'partesAdversas', comarcas:'comarcas', varas:'varas', etapasProcessuais:'etapasProcessuais'};
+      Object.keys(map).forEach(k => { CADASTROS[k] = []; });
+      cads_.forEach(c => { if(CADASTROS[c.tabela]) CADASTROS[c.tabela].push({id:c.id, nome:c.nome, campo2:c.campo2||''}); });
     }
     console.log('✅ Dados carregados do Supabase:', { clientes: CLIENTES.length, processos: PROCESSOS.length });
     if(typeof renderDashboard === 'function') renderDashboard();
@@ -1025,67 +1032,10 @@ let USUARIOS = [
 let nextUserId = 6;
 
 let CADASTROS = {
-  tiposAcao:[
-    {id:1,nome:'Revisão de Proventos',campo2:'RFP'},
-    {id:2,nome:'Acumulação de Cargos',campo2:'AC'},
-    {id:3,nome:'Incorporação de Quintos',campo2:'IQ'},
-    {id:4,nome:'Adicional de Insalubridade',campo2:'AI'},
-    {id:5,nome:'Progressão Funcional',campo2:'PF'},
-  ],
-  fases:[
-    {id:6,nome:'Petição Inicial',campo2:''},
-    {id:7,nome:'Aguardando Citação',campo2:''},
-    {id:8,nome:'Contestação',campo2:''},
-    {id:9,nome:'Instrução',campo2:''},
-    {id:10,nome:'Sentença',campo2:''},
-    {id:11,nome:'Recurso',campo2:''},
-    {id:12,nome:'Execução',campo2:''},
-    {id:30,nome:'01 - Fase de Conhecimento',campo2:''},
-    {id:31,nome:'02 - Fase Recurso',campo2:''},
-    {id:32,nome:'03 - Fase de Liquidação',campo2:''},
-    {id:33,nome:'04 - Fase de Execução',campo2:''},
-  ],
-  etapasProcessuais:[
-    {id:34,nome:'Distribuição',campo2:''},
-    {id:35,nome:'Citação',campo2:''},
-    {id:36,nome:'Contestação',campo2:''},
-    {id:37,nome:'Réplica',campo2:''},
-    {id:38,nome:'Audiência de Instrução',campo2:''},
-    {id:39,nome:'Perícia',campo2:''},
-    {id:40,nome:'Alegações Finais',campo2:''},
-    {id:41,nome:'Sentença',campo2:''},
-    {id:42,nome:'Recurso de Apelação',campo2:''},
-    {id:43,nome:'Trânsito em Julgado',campo2:''},
-    {id:44,nome:'Cumprimento de Sentença',campo2:''},
-    {id:45,nome:'Precatório',campo2:''},
-  ],
-  partesAdversas:[
-    {id:13,nome:'Prefeitura Municipal de São Paulo',campo2:''},
-    {id:14,nome:'Estado de São Paulo',campo2:''},
-    {id:15,nome:'Município de Guarulhos',campo2:''},
-    {id:16,nome:'Município de Campinas',campo2:''},
-    {id:17,nome:'INSS',campo2:''},
-  ],
-  comarcas:[
-    {id:18,nome:'São Paulo',campo2:''},
-    {id:19,nome:'Guarulhos',campo2:''},
-    {id:20,nome:'Campinas',campo2:''},
-    {id:21,nome:'Santo André',campo2:''},
-  ],
-  municipios:[
-    {id:22,nome:'São Paulo',campo2:'SP'},
-    {id:23,nome:'Guarulhos',campo2:'SP'},
-    {id:24,nome:'Campinas',campo2:'SP'},
-    {id:25,nome:'Santo André',campo2:'SP'},
-    {id:26,nome:'Santos',campo2:'SP'},
-  ],
-  varas:[
-    {id:27,nome:'1ª Vara da Fazenda Pública',campo2:'São Paulo'},
-    {id:28,nome:'2ª Vara da Fazenda Pública',campo2:'São Paulo'},
-    {id:29,nome:'1ª Vara Cível',campo2:'Guarulhos'},
-  ],
+  tiposAcao:[], fases:[], etapasProcessuais:[],
+  partesAdversas:[], comarcas:[], varas:[],
 };
-let nextCadId = 50;
+let nextCadId = 500;
 
 
 // ════════════════════════════════════
@@ -1308,7 +1258,6 @@ const CAD_CONFIG = {
   fases:         {label:'Fases Processuais',  c1:'Nome da Fase',         c2:'',            tem2:false},
   partesAdversas:{label:'Partes Adversas',    c1:'Nome da Parte Adversa',c2:'',            tem2:false},
   comarcas:      {label:'Comarcas',           c1:'Nome da Comarca',      c2:'',            tem2:false},
-  municipios:    {label:'Municípios',         c1:'Nome do Município',    c2:'Estado (UF)', tem2:true},
   varas:         {label:'Varas',              c1:'Nome da Vara',         c2:'Comarca',     tem2:true},
   etapasProcessuais:{label:'Etapas Processuais', c1:'Nome da Etapa',        c2:'',            tem2:false},
 };
@@ -2904,18 +2853,22 @@ function openCadModal(tabela,id){
   openModal('cadastro-modal');
 }
 
-function saveCadastro(){
+async function saveCadastro(){
   const tabela=document.getElementById('cad-tabela').value;
   const id=document.getElementById('cad-id').value;
   const nome=document.getElementById('cad-nome').value.trim();
   const campo2=document.getElementById('cad-campo2').value.trim();
   if(!nome){showToast('Preencha o campo nome','error');return;}
   if(id){
-    const item=CADASTROS[tabela].find(i=>i.id===parseInt(id));
+    const idn=parseInt(id);
+    const item=CADASTROS[tabela].find(i=>i.id===idn);
     item.nome=nome; item.campo2=campo2;
+    await DB.atualizar('cadastros',idn,{nome,campo2});
     showToast('Registro atualizado!','success');
   } else {
-    CADASTROS[tabela].push({id:nextCadId++,nome,campo2});
+    const novo=await DB.inserir('cadastros',{tabela,nome,campo2});
+    if(!novo||novo._erro){showToast('Erro ao salvar: '+(novo?._erro||'falha'),'error');return;}
+    CADASTROS[tabela].push({id:novo.id,nome,campo2});
     showToast('Registro cadastrado!','success');
   }
   closeModal('cadastro-modal');
@@ -2924,7 +2877,8 @@ function saveCadastro(){
 
 function deleteCad(tabela,id){
   const item=CADASTROS[tabela].find(i=>i.id===id);
-  showConfirm('Excluir Registro',`Excluir "<b>${item.nome}</b>"?`,()=>{
+  showConfirm('Excluir Registro',`Excluir "<b>${item.nome}</b>"?`,async()=>{
+    await DB.deletar('cadastros',id);
     CADASTROS[tabela]=CADASTROS[tabela].filter(i=>i.id!==id);
     showToast('Excluído.','success');
     renderCadContent();
