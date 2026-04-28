@@ -1547,7 +1547,8 @@ function renderDashboard() {
   const isEstagiario = currentUser.perfil==='Estagiário';
   // Meta real e editável — protocolados calculados do mês corrente
   const meta=META_MENSAL.meta;
-  const mesAtualMeta=hoje.getMonth(), anoAtualMeta=hoje.getFullYear();
+  const _hoje=new Date();
+  const mesAtualMeta=_hoje.getMonth(), anoAtualMeta=_hoje.getFullYear();
   const prot=PROCESSOS.filter(p=>{ if(!p.protocolo) return false; const d=new Date(p.protocolo+'T00:00:00'); return d.getMonth()===mesAtualMeta && d.getFullYear()===anoAtualMeta; }).length;
   const pct=meta>0?Math.round(prot/meta*100):0;
   const mesesPT=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
