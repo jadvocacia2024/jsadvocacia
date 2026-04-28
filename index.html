@@ -359,26 +359,36 @@
 
   /* ═══ SIDEBAR ═══ */
   .sidebar { width: 240px; background: var(--sidebar-bg); color: white; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; height: 100vh; overflow-y: auto; z-index: 100; }
-  .sidebar-header { padding: 20px 16px; border-bottom: 1px solid rgba(255,255,255,0.08); }
-  .sidebar-logo { font-size: 18px; font-weight: 800; letter-spacing: 1px; color: white; }
+  .sidebar-header { padding: 18px 16px 16px; border-bottom: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.1); }
+  .sidebar-logo { font-size: 20px; font-weight: 800; letter-spacing: 1.5px; color: white; line-height: 1; }
   .sidebar-logo span { color: #60A5FA; }
-  .sidebar-sub { font-size: 10px; color: rgba(255,255,255,0.4); margin-top: 2px; }
-  .sidebar-nav { padding: 12px 8px; flex: 1; }
-  .nav-section { margin-bottom: 4px; }
-  .nav-section-label { font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 1px; padding: 12px 8px 4px; }
-  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; cursor: pointer; transition: all 0.15s; color: rgba(255,255,255,0.7); font-size: 13px; font-weight: 500; margin-bottom: 1px; }
-  .nav-item:hover { background: var(--sidebar-hover); color: white; }
-  .nav-item.active { background: var(--sidebar-active); color: white; }
-  .nav-icon { font-size: 16px; width: 20px; text-align: center; }
-  .nav-badge { margin-left: auto; background: var(--vermelho); color: white; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 10px; min-width: 18px; text-align: center; }
-  .sidebar-footer { padding: 12px 8px; border-top: 1px solid rgba(255,255,255,0.08); }
-  .user-card { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; }
-  .user-avatar { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; color: white; flex-shrink: 0; }
+  .sidebar-sub { font-size: 10px; color: rgba(255,255,255,0.35); margin-top: 3px; letter-spacing: 0.3px; }
+  .sidebar-nav { padding: 8px 8px; flex: 1; overflow-y: auto; }
+  .sidebar-nav::-webkit-scrollbar { width: 3px; }
+  .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
+  .nav-section { margin-bottom: 2px; }
+  .nav-section-label { font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.25); text-transform: uppercase; letter-spacing: 1.2px; padding: 14px 10px 5px; }
+  .nav-section:first-child .nav-section-label { padding-top: 4px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; cursor: pointer; transition: all 0.15s; color: rgba(255,255,255,0.65); font-size: 13px; font-weight: 500; margin-bottom: 1px; position: relative; }
+  .nav-item:hover { background: var(--sidebar-hover); color: rgba(255,255,255,0.95); }
+  .nav-item.active { background: var(--sidebar-active); color: white; font-weight: 600; box-shadow: 0 2px 8px rgba(37,99,168,0.4); }
+  .nav-item.active .nav-icon { filter: drop-shadow(0 0 4px rgba(255,255,255,0.4)); }
+  .nav-icon { font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; }
+  .nav-badge { margin-left: auto; background: var(--vermelho); color: white; font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 10px; min-width: 18px; text-align: center; }
+  .sidebar-footer { padding: 12px 10px 14px; border-top: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.15); }
+  .user-card { display: flex; align-items: center; gap: 10px; padding: 10px 10px; border-radius: 10px; cursor: pointer; transition: background 0.15s; margin-bottom: 10px; }
+  .user-card:hover { background: rgba(255,255,255,0.07); }
+  .user-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; color: white; flex-shrink: 0; border: 2px solid rgba(255,255,255,0.2); }
   .user-info { flex: 1; min-width: 0; }
-  .user-name { font-size: 12px; font-weight: 600; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .user-role { font-size: 10px; color: rgba(255,255,255,0.4); }
-  .btn-logout { font-size: 11px; color: rgba(255,255,255,0.4); cursor: pointer; padding: 4px 8px; border-radius: 4px; width: 100%; text-align: left; background: transparent; border: none; }
-  .btn-logout:hover { color: white; background: rgba(255,255,255,0.08); }
+  .user-name { font-size: 12px; font-weight: 700; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .user-role { font-size: 10px; color: rgba(255,255,255,0.45); margin-top: 1px; }
+  .user-edit-icon { font-size: 12px; color: rgba(255,255,255,0.3); flex-shrink: 0; transition: color 0.15s; }
+  .user-card:hover .user-edit-icon { color: rgba(255,255,255,0.7); }
+  .sidebar-footer-btns { display: flex; gap: 6px; }
+  .btn-sync { flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.6); padding: 7px 10px; border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: 600; transition: all 0.15s; }
+  .btn-sync:hover { background: rgba(255,255,255,0.13); color: white; }
+  .btn-logout { display: flex; align-items: center; justify-content: center; gap: 5px; background: rgba(220,38,38,0.18); border: 1px solid rgba(220,38,38,0.3); color: rgba(255,160,160,0.9); padding: 7px 12px; border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: 600; transition: all 0.15s; white-space: nowrap; }
+  .btn-logout:hover { background: rgba(220,38,38,0.35); border-color: rgba(220,38,38,0.6); color: #fff; }
 
   /* ═══ TOPBAR ═══ */
   .main { margin-left: 240px; display: flex; flex-direction: column; min-height: 100vh; }
@@ -605,7 +615,7 @@
       <input type="password" id="login-pass" placeholder="••••••••">
     </div>
     <button class="btn-login" onclick="doLogin()">Entrar no Sistema</button>
-    <div class="login-error" id="login-error">Usuário ou senha inválidos. Tente novamente.</div>
+<div class="login-error" id="login-error">Usuário ou senha inválidos. Tente novamente.</div>
 
   </div>
 </div>
@@ -620,16 +630,17 @@
       </div>
       <nav class="sidebar-nav" id="sidebar-nav"></nav>
       <div class="sidebar-footer">
-        <div class="user-card" onclick="openMeuPerfil()" title="Clique para editar seu perfil">
+        <div class="user-card" onclick="openMeuPerfil()" title="Editar perfil">
           <div class="user-avatar" id="sb-avatar"></div>
           <div class="user-info">
             <div class="user-name" id="sb-name"></div>
             <div class="user-role" id="sb-role"></div>
           </div>
+          <span class="user-edit-icon">✏️</span>
         </div>
-        <div style="padding:0 10px 4px">
-          <button onclick="fbSync().then(()=>showToast('Dados sincronizados!','success'))" style="background:none;border:1px solid rgba(255,255,255,0.2);color:white;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:11px;margin-right:6px">🔄 Sincronizar</button>
-          <button class="btn-logout" onclick="doLogout()">🚪 Sair do sistema</button>
+        <div class="sidebar-footer-btns">
+          <button class="btn-sync" onclick="fbSync().then(()=>showToast('Dados sincronizados!','success'))">🔄 Sincronizar</button>
+          <button class="btn-logout" onclick="doLogout()">🚪 Sair</button>
         </div>
       </div>
     </aside>
@@ -1370,7 +1381,6 @@ const NAV = [
     {id:'servicos',icon:'📋',label:'Serviços',perfis:['Administrador','Advogado','Estagiário']},
     {id:'suporte',icon:'📞',label:'Suporte ao Cliente',perfis:['Administrador','Suporte']},
     {id:'documentos',icon:'📁',label:'Documentos',perfis:['Administrador','Advogado','Estagiário','Suporte']},
-    {id:'agenda',icon:'📅',label:'Agenda',perfis:['Administrador','Advogado','Estagiário','Suporte','Parceiro']},
   ]},
   {section:'Gestão', items:[
     {id:'financeiro',icon:'💰',label:'Financeiro',perfis:['Administrador']},
@@ -1558,7 +1568,7 @@ function renderDashboard() {
         const cor=TIPO_COR[s.tipo]||{bg:'#F1F5F9',tc:'#475569',icon:'📌'};
         const dias=Math.ceil((new Date(s.data+'T12:00:00')-hojeEvt)/(1000*60*60*24));
         const dataStr=dias<0?`Vencido ${Math.abs(dias)}d`:dias===0?'HOJE':dias===1?'Amanhã':`${s.data}`;
-        html+=`<div class="evento-item" onclick="navigateTo('agenda')">
+        html+=`<div class="evento-item">
           <div class="evento-badge" style="background:${cor.bg}">${cor.icon}</div>
           <div style="flex:1">
             <div class="evento-tipo" style="color:${cor.tc}">${s.tipo}</div>
@@ -1590,6 +1600,7 @@ function renderDashboard() {
   }
   html+=`</div>`;
 
+  html+=buildAgendaHTML();
   document.getElementById('content-area').innerHTML=html;
 }
 
@@ -1815,6 +1826,7 @@ function renderDashboardParceiro(){
   }
   html+=`</div>`;
 
+  html+=buildAgendaHTML();
   document.getElementById('content-area').innerHTML=html;
 }
 
@@ -2179,6 +2191,7 @@ function renderDashboardSuporte(){
   }
   html+=`</div>`;
 
+  html+=buildAgendaHTML();
   document.getElementById('content-area').innerHTML=html;
 }
 
@@ -2314,6 +2327,7 @@ function renderDashboardAdvogado(){
   html+=buildKanbanBoard(getUserBoard(currentUser.login),currentUser.login,false);
   html+=`</div>`;
 
+  html+=buildAgendaHTML();
   document.getElementById('content-area').innerHTML=html;
 }
 
@@ -5248,7 +5262,7 @@ let agendaMes = new Date().getMonth();
 let agendaAno = new Date().getFullYear();
 let agendaDiaSel = null;
 
-function renderAgenda(){
+function buildAgendaHTML(){
   const isParceiro = currentUser.perfil==='Parceiro';
   const meusProcessosIds = isParceiro
     ? PROCESSOS.filter(p=>p.parceiro===currentUser.nome).map(p=>p.id)
@@ -5256,8 +5270,6 @@ function renderAgenda(){
   const isSuporteAgenda = currentUser.perfil==='Suporte';
   const isAdminAgenda = currentUser.perfil==='Administrador';
 
-  // Unificar SERVICOS + SERVICOS_CLIENTE numa lista única para a agenda
-  // SERVICOS_CLIENTE não têm processoId — marcamos com _fromCliente=true
   const svcClienteComData = SERVICOS_CLIENTE.filter(s=>s.data).map(s=>({...s,_fromCliente:true}));
   const todosServicos = [...SERVICOS, ...svcClienteComData];
 
@@ -5272,20 +5284,16 @@ function renderAgenda(){
   const hoje = new Date();
   const mesNomes = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   const primeiroDia = new Date(agendaAno, agendaMes, 1);
-  const ultimoDia   = new Date(agendaAno, agendaMes+1, 0);
   const inicioGrid  = new Date(primeiroDia);
   inicioGrid.setDate(1 - (primeiroDia.getDay()));
 
-  // Mapear eventos do mês a partir de SERVICOS (filtrados para parceiro)
   const evtMap = {};
   servicosFiltrados.forEach(s=>{
     if(!s.data) return;
-    const d = s.data; // YYYY-MM-DD
-    if(!evtMap[d]) evtMap[d]=[];
-    evtMap[d].push(s);
+    if(!evtMap[s.data]) evtMap[s.data]=[];
+    evtMap[s.data].push(s);
   });
 
-  // Gerar grid de dias
   let dias = '';
   let cur = new Date(inicioGrid);
   for(let i=0;i<42;i++){
@@ -5304,7 +5312,6 @@ function renderAgenda(){
     cur.setDate(cur.getDate()+1);
   }
 
-  // Detalhe do dia selecionado
   let detalhe = '';
   if(agendaDiaSel){
     const evtsDia = servicosFiltrados.filter(s=>s.data===agendaDiaSel);
@@ -5333,47 +5340,53 @@ function renderAgenda(){
     detalhe=`<div class="cal-day-detail"><div style="font-weight:700;margin-bottom:12px;color:var(--azul-escuro)">📅 ${dataFmt}</div>${itens}</div>`;
   }
 
-  document.getElementById('content-area').innerHTML=`
-    <div class="page-header">
-      <div class="page-title">📅 Agenda</div>
-      ${!isParceiro?'<button class="btn-primary" onclick="openServicoModal()">➕ Novo Serviço</button>':''}
-    </div>
-    ${isParceiro?`<div style="background:#EDE9FE;border:1px solid #C4B5FD;border-radius:10px;padding:10px 16px;margin-bottom:12px;font-size:13px;color:#5B21B6;font-weight:600">🤝 Exibindo apenas os eventos dos processos vinculados ao seu perfil.</div>`:''}
-    <div class="cal-header">
-      <div class="cal-nav">
-        <button onclick="agendaNavMes(-1)">◀ Anterior</button>
-        <span class="cal-mes">${mesNomes[agendaMes]} ${agendaAno}</span>
-        <button onclick="agendaNavMes(1)">Próximo ▶</button>
+  return `
+    <div style="margin-top:28px;border-top:2px solid var(--cinza-borda);padding-top:24px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+        <div style="font-size:16px;font-weight:800;color:var(--azul-escuro)">📅 Agenda</div>
+        ${!isParceiro?'<button class="btn-primary" onclick="openServicoModal()">➕ Novo Serviço</button>':''}
       </div>
-      <button class="btn-secondary" onclick="agendaMes=new Date().getMonth();agendaAno=new Date().getFullYear();renderAgenda()">Hoje</button>
-    </div>
-    <div class="cal-grid">
-      <div class="cal-weekdays">
-        ${['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map(d=>`<div class="cal-wday">${d}</div>`).join('')}
+      ${isParceiro?`<div style="background:#EDE9FE;border:1px solid #C4B5FD;border-radius:10px;padding:10px 16px;margin-bottom:12px;font-size:13px;color:#5B21B6;font-weight:600">🤝 Exibindo apenas os eventos dos processos vinculados ao seu perfil.</div>`:''}
+      <div class="cal-header">
+        <div class="cal-nav">
+          <button onclick="agendaNavMes(-1)">◀ Anterior</button>
+          <span class="cal-mes">${mesNomes[agendaMes]} ${agendaAno}</span>
+          <button onclick="agendaNavMes(1)">Próximo ▶</button>
+        </div>
+        <button class="btn-secondary" onclick="agendaMes=new Date().getMonth();agendaAno=new Date().getFullYear();renderDashboard()">Hoje</button>
       </div>
-      <div class="cal-days">${dias}</div>
+      <div class="cal-grid">
+        <div class="cal-weekdays">
+          ${['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map(d=>`<div class="cal-wday">${d}</div>`).join('')}
+        </div>
+        <div class="cal-days">${dias}</div>
+      </div>
+      <div class="cal-legend">
+        <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#DBEAFE"></div>Audiência</div>
+        <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#FED7AA"></div>Perícia</div>
+        <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#FEE2E2"></div>Prazo</div>
+        <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#EDE9FE"></div>Diligência</div>
+        <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#DCFCE7"></div>Suporte</div>
+      </div>
+      ${detalhe}
     </div>
-    <div class="cal-legend">
-      <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#DBEAFE"></div>Audiência</div>
-      <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#FED7AA"></div>Perícia</div>
-      <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#FEE2E2"></div>Prazo</div>
-      <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#EDE9FE"></div>Diligência</div>
-      <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#DCFCE7"></div>Suporte</div>
-    </div>
-    ${detalhe}
   `;
+}
+
+function renderAgenda(){
+  document.getElementById('content-area').innerHTML=`<div style="padding:20px">${buildAgendaHTML()}</div>`;
 }
 
 function agendaNavMes(dir){
   agendaMes += dir;
   if(agendaMes>11){agendaMes=0;agendaAno++;}
   if(agendaMes<0){agendaMes=11;agendaAno--;}
-  renderAgenda();
+  renderDashboard();
 }
 
 function agendaSelectDia(iso){
   agendaDiaSel = agendaDiaSel===iso?null:iso;
-  renderAgenda();
+  renderDashboard();
 }
 
 // ════════════════════════════════════════════════════════════════
