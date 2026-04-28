@@ -3160,7 +3160,7 @@ async function saveServicoCliente(){
   const responsavelSvc=document.getElementById('csvc-responsavel').value||currentUser.login;
   const hoje=new Date().toISOString().slice(0,10);
   const dados={clienteId,tipo,status:statusSvc,responsavel:responsavelSvc,data,desc:document.getElementById('csvc-desc').value,obs:document.getElementById('csvc-obs').value,dataConclusao:statusSvc==='Concluído'?hoje:''};
-  const dbDados={cliente_id:dados.clienteId,tipo:dados.tipo,status:dados.status,responsavel:dados.responsavel,data:dados.data,descricao:dados.desc,obs:dados.obs,data_conclusao:dados.dataConclusao||null};
+  const dbDados={cliente_id:dados.clienteId,tipo:dados.tipo,status:dados.status,responsavel:dados.responsavel,data:dados.data,descricao:dados.desc,obs:dados.obs};
   if(id){
     const idn=parseInt(id);
     const anterior=SERVICOS_CLIENTE.find(s=>s.id===idn);
@@ -3185,9 +3185,8 @@ function avancarStatusCliSvc(svcId,clienteId){
     const upd={status:prox};
     if(prox==='Concluído'){
       upd.responsavel=currentUser.login;
-      upd.dataConclusao=new Date().toISOString().slice(0,10);
       s.responsavel=currentUser.login;
-      s.dataConclusao=upd.dataConclusao;
+      s.dataConclusao=new Date().toISOString().slice(0,10);
     }
     await DB.atualizar('servicos_cliente',svcId,upd);
     showToast(prox==='Concluído'?'✅ Serviço concluído e registrado na pasta do cliente!':'Status: '+prox,'success');
@@ -3627,7 +3626,7 @@ async function registrarConcluidoNaPasta(svcObj){
   // Evita duplicata: mesmo processo + tipo + data
   const jaExiste=SERVICOS_CLIENTE.some(sc=>sc.clienteId===proc.clienteId&&sc.obs===ref&&sc.tipo===svcObj.tipo&&sc.data===svcObj.data);
   if(jaExiste) return;
-  const dados={clienteId:proc.clienteId,tipo:svcObj.tipo,status:'Concluído',responsavel,data:svcObj.data||hoje,dataConclusao:hoje,desc:descFinal,obs:ref,criacao:hoje};
+  const dados={clienteId:proc.clienteId,tipo:svcObj.tipo,status:'Concluído',responsavel,data:svcObj.data||hoje,desc:descFinal,obs:ref,criacao:hoje};
   const novo=await DB.inserir('servicos_cliente',dados);
   SERVICOS_CLIENTE.push({id:novo?.id||Date.now(),...dados});
 }
