@@ -37,7 +37,7 @@
     },
     async inserir(tabela, obj) {
       const { data, error } = await _sb.from(tabela).insert([obj]).select().single();
-      if (error) { console.warn('Erro ao inserir em ' + tabela, error); return null; }
+      if (error) { console.warn('Erro ao inserir em ' + tabela, error); return {_erro: error.message||error.code||JSON.stringify(error)}; }
       return data;
     },
     async atualizar(tabela, id, obj) {
@@ -3170,7 +3170,7 @@ async function saveServicoCliente(){
     showToast('Serviço atualizado!','success');
   } else {
     const novo=await DB.inserir('servicos_cliente',dbDados);
-    if(!novo){showToast('Erro ao salvar serviço no banco','error');return;}
+    if(!novo||novo._erro){showToast('Erro: '+(novo?._erro||'falha ao salvar'),'error');return;}
     SERVICOS_CLIENTE.push({id:novo.id,...dados,criacao:novo.created_at||hoje});
     showToast('Serviço adicionado!','success');
   }
