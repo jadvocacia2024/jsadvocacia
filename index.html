@@ -3157,17 +3157,22 @@ async function saveServicoCliente(){
   const tipo=document.getElementById('csvc-tipo').value;
   const data=document.getElementById('csvc-data').value;
   if(!tipo||!data){showToast('Preencha tipo e data','error');return;}
-  const dados={clienteId,tipo,status:document.getElementById('csvc-status').value,responsavel:document.getElementById('csvc-responsavel').value,data,desc:document.getElementById('csvc-desc').value,obs:document.getElementById('csvc-obs').value};
-  const dbDados={cliente_id:dados.clienteId,tipo:dados.tipo,status:dados.status,responsavel:dados.responsavel,data:dados.data,descricao:dados.desc,obs:dados.obs};
+  const statusSvc=document.getElementById('csvc-status').value;
+  const responsavelSvc=document.getElementById('csvc-responsavel').value||currentUser.login;
+  const hoje=new Date().toISOString().slice(0,10);
+  const dados={clienteId,tipo,status:statusSvc,responsavel:responsavelSvc,data,desc:document.getElementById('csvc-desc').value,obs:document.getElementById('csvc-obs').value,dataConclusao:statusSvc==='Concluído'?hoje:''};
+  const dbDados={cliente_id:dados.clienteId,tipo:dados.tipo,status:dados.status,responsavel:dados.responsavel,data:dados.data,descricao:dados.desc,obs:dados.obs,data_conclusao:dados.dataConclusao||null};
   if(id){
     const idn=parseInt(id);
-    Object.assign(SERVICOS_CLIENTE.find(s=>s.id===idn),dados);
+    const anterior=SERVICOS_CLIENTE.find(s=>s.id===idn);
+    if(statusSvc==='Concluído'&&anterior.status!=='Concluído') dados.dataConclusao=hoje;
+    Object.assign(anterior,dados);
     await DB.atualizar('servicos_cliente',idn,dbDados);
     showToast('Serviço atualizado!','success');
   } else {
     const novo=await DB.inserir('servicos_cliente',dbDados);
     if(!novo){showToast('Erro ao salvar serviço no banco','error');return;}
-    SERVICOS_CLIENTE.push({id:novo.id,...dados,criacao:novo.created_at||new Date().toISOString().slice(0,10)});
+    SERVICOS_CLIENTE.push({id:novo.id,...dados,criacao:novo.created_at||hoje});
     showToast('Serviço adicionado!','success');
   }
   closeModal('cli-svc-modal');
@@ -3575,18 +3580,41 @@ async function saveServico(){
   if(!procId||!tipo||!data){showToast('Preencha processo, tipo e data','error');return;}
   const dados={processoId:parseInt(procId),tipo,status:document.getElementById('svc-status').value,responsavel:document.getElementById('svc-responsavel').value,data,hora:document.getElementById('svc-hora').value,local:document.getElementById('svc-local').value,desc:document.getElementById('svc-desc').value,obs:document.getElementById('svc-obs').value};
   const dbDados={processo_id:dados.processoId,tipo:dados.tipo,status:dados.status,responsavel:dados.responsavel,data:dados.data,hora:dados.hora||null,local:dados.local,descricao:dados.desc,obs:dados.obs};
+  dados.responsavel=dados.responsavel||currentUser.login;
+  dbDados.responsavel=dados.responsavel;
   if(id){
     const idn=parseInt(id);
-    Object.assign(SERVICOS.find(s=>s.id===idn),dados);
+    const anterior=SERVICOS.find(s=>s.id===idn);
+    const eraConc=anterior.status==='Concluído';
+    Object.assign(anterior,dados);
     await DB.atualizar('servicos',idn,dbDados);
+    if(dados.status==='Concluído'&&!eraConc) await registrarConcluidoNaPasta(anterior);
     showToast('Serviço atualizado!','success');
   } else {
     const novo=await DB.inserir('servicos',dbDados);
     if(!novo){showToast('Erro ao salvar serviço no banco','error');return;}
-    SERVICOS.push({id:novo.id,...dados,criacao:novo.created_at||new Date().toISOString().slice(0,10)});
+    const svcNovo={id:novo.id,...dados,criacao:novo.created_at||new Date().toISOString().slice(0,10)};
+    SERVICOS.push(svcNovo);
+    if(dados.status==='Concluído') await registrarConcluidoNaPasta(svcNovo);
     showToast('Serviço cadastrado!','success');
   }
   closeModal('servico-modal');renderDashboard();
+}
+
+// Registra serviço concluído na pasta do cliente (evita duplicata)
+async function registrarConcluidoNaPasta(svcObj){
+  const proc=PROCESSOS.find(p=>p.id===svcObj.processoId);
+  if(!proc) return;
+  const hoje=new Date().toISOString().slice(0,10);
+  const responsavel=svcObj.responsavel||currentUser.login;
+  const descFinal=(svcObj.desc||svcObj.tipo)+(svcObj.local?' — '+svcObj.local:'');
+  const ref='[Auto] Processo: '+proc.numeroCNJ;
+  // Evita duplicata: mesmo processo + tipo + data
+  const jaExiste=SERVICOS_CLIENTE.some(sc=>sc.clienteId===proc.clienteId&&sc.obs===ref&&sc.tipo===svcObj.tipo&&sc.data===svcObj.data);
+  if(jaExiste) return;
+  const dados={clienteId:proc.clienteId,tipo:svcObj.tipo,status:'Concluído',responsavel,data:svcObj.data||hoje,dataConclusao:hoje,desc:descFinal,obs:ref,criacao:hoje};
+  const novo=await DB.inserir('servicos_cliente',dados);
+  SERVICOS_CLIENTE.push({id:novo?.id||Date.now(),...dados});
 }
 
 function avancarStatus(id){
@@ -3594,22 +3622,13 @@ function avancarStatus(id){
   const prox=s.status==='A Fazer'?'Em Andamento':s.status==='Em Andamento'?'Concluído':'A Fazer';
   showConfirm('Atualizar Status',`Mover serviço para <b>${prox}</b>?`,async()=>{
     s.status=prox;
-    await DB.atualizar('servicos',id,{status:prox});
-    // Ao concluir: registra automaticamente na pasta do cliente
+    s.responsavel=s.responsavel||currentUser.login;
+    await DB.atualizar('servicos',id,{status:prox,responsavel:s.responsavel});
     if(prox==='Concluído'){
-      const proc=PROCESSOS.find(p=>p.id===s.processoId);
-      if(proc){
-        const hoje=new Date().toISOString().slice(0,10);
-        const descFinal=(s.desc||s.tipo)+(s.local?' — '+s.local:'');
-        const dados={clienteId:proc.clienteId,tipo:s.tipo,status:'Concluído',responsavel:s.responsavel,data:hoje,desc:descFinal,obs:'[Auto] Processo: '+proc.numeroCNJ,criacao:hoje};
-        const novo=await DB.inserir('servicos_cliente',dados);
-        SERVICOS_CLIENTE.push({id:novo?.id||Date.now(),...dados});
-        showToast('✅ Serviço concluído e registrado na pasta do cliente!','success');
-      } else {
-        showToast(`Status: ${prox}`,'success');
-      }
+      await registrarConcluidoNaPasta(s);
+      showToast('✅ Serviço concluído e registrado na pasta do cliente!','success');
     } else {
-      showToast(`Status: ${prox}`,'success');
+      showToast('Status: '+prox,'success');
     }
     renderDashboard();
   });
