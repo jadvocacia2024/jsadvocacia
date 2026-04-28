@@ -1378,7 +1378,6 @@ const NAV = [
     {id:'pre-atendimento',icon:'🎯',label:'Pré-Atendimento',get badge(){return LEADS.filter(l=>l.status==='Aguardando Triagem').length||0;},perfis:['Administrador','Advogado','Suporte']},
     {id:'clientes',icon:'👥',label:'Clientes',perfis:['Administrador','Advogado','Estagiário','Suporte']},
     {id:'processos',icon:'⚖️',label:'Processos',perfis:['Administrador','Advogado','Estagiário','Parceiro']},
-    {id:'servicos',icon:'📋',label:'Serviços',perfis:['Administrador','Advogado','Estagiário']},
     {id:'suporte',icon:'📞',label:'Suporte ao Cliente',perfis:['Administrador','Suporte']},
     {id:'documentos',icon:'📁',label:'Documentos',perfis:['Administrador','Advogado','Estagiário','Suporte']},
   ]},
@@ -1600,6 +1599,7 @@ function renderDashboard() {
   }
   html+=`</div>`;
 
+  html+=buildServicosHTML();
   html+=buildAgendaHTML();
   document.getElementById('content-area').innerHTML=html;
 }
@@ -2191,6 +2191,7 @@ function renderDashboardSuporte(){
   }
   html+=`</div>`;
 
+  html+=buildServicosHTML();
   html+=buildAgendaHTML();
   document.getElementById('content-area').innerHTML=html;
 }
@@ -2327,6 +2328,7 @@ function renderDashboardAdvogado(){
   html+=buildKanbanBoard(getUserBoard(currentUser.login),currentUser.login,false);
   html+=`</div>`;
 
+  html+=buildServicosHTML();
   html+=buildAgendaHTML();
   document.getElementById('content-area').innerHTML=html;
 }
@@ -3366,14 +3368,17 @@ function deleteProcesso(id){
 // ════════════════════════════════════
 // FASE 2 — SERVIÇOS
 // ════════════════════════════════════
-function renderServicos(){
+function buildServicosHTML(){
   const tipoClass=tipo=>({Audiência:'tipo-audiencia',Perícia:'tipo-pericia',Prazo:'tipo-prazo',Diligência:'tipo-diligencia',Suporte:'tipo-suporte'}[tipo]||'');
   const stClass=s=>s==='A Fazer'?'status-afazer':s==='Em Andamento'?'status-andamento':'status-concluido';
   const isEstag = currentUser.perfil==='Estagiário';
   const isAdvogado = currentUser.perfil==='Advogado';
+  const isAdmin = currentUser.perfil==='Administrador';
+  const isSup = currentUser.perfil==='Suporte';
+  const isParceiro = currentUser.perfil==='Parceiro';
+  if(isParceiro) return '';
   const loginsSup = USUARIOS.filter(u=>u.perfil==='Suporte').map(u=>u.login);
 
-  const isSup = currentUser.perfil==='Suporte';
   let list=SERVICOS.filter(s=>{
     if((isEstag||isAdvogado) && loginsSup.includes(s.responsavel)) return false;
     if(isSup && !loginsSup.includes(s.responsavel)) return false;
@@ -3393,7 +3398,7 @@ function renderServicos(){
       <td style="font-size:12px">${p?p.numeroCNJ.substring(0,16)+'...':'—'}</td>
       <td style="font-size:13px">${cli?cli.nome.split(' ').slice(0,2).join(' '):'—'}</td>
       <td style="font-size:12px">${p?p.parteAdversa.substring(0,20)+'...':'—'}</td>
-      <td style="font-size:12px">${s.data?new Date(s.data).toLocaleDateString('pt-BR'):'—'} ${s.hora||''}</td>
+      <td style="font-size:12px">${s.data?new Date(s.data+'T12:00:00').toLocaleDateString('pt-BR'):'—'} ${s.hora||''}</td>
       <td><span class="badge ${stClass(s.status)}">${s.status}</span></td>
       <td style="font-size:12px">${resp?resp.nome.split(' ').slice(0,2).join(' '):'—'}</td>
       <td><div class="td-actions">
@@ -3404,26 +3409,32 @@ function renderServicos(){
     </tr>`;
   }).join('');
 
-  document.getElementById('content-area').innerHTML=`
-    <div class="page-header">
-      <div class="page-title">📋 Serviços</div>
-      <button class="btn-primary" onclick="openServicoModal()">➕ Novo Serviço</button>
-    </div>
-    <div class="table-card">
-      <div class="table-search" style="flex-wrap:wrap;gap:8px">
-        <select class="select-filter" onchange="filtroServicos.tipo=this.value;renderServicos()">
-          <option value="">Todos os tipos</option>
-          ${['Audiência','Perícia','Prazo','Diligência','Suporte'].map(t=>`<option ${filtroServicos.tipo===t?'selected':''}>${t}</option>`).join('')}
-        </select>
-        <select class="select-filter" onchange="filtroServicos.status=this.value;renderServicos()">
-          <option value="">Todos os status</option>
-          ${['A Fazer','Em Andamento','Concluído'].map(s=>`<option ${filtroServicos.status===s?'selected':''}>${s}</option>`).join('')}
-        </select>
+  return `
+    <div style="margin-top:28px;border-top:2px solid var(--cinza-borda);padding-top:24px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+        <div style="font-size:16px;font-weight:800;color:var(--azul-escuro)">📋 Serviços</div>
+        ${!isSup?'<button class="btn-primary" onclick="openServicoModal()">➕ Novo Serviço</button>':''}
       </div>
-      <table><thead><tr><th>Tipo</th><th>Processo</th><th>Cliente</th><th>Parte Adversa</th><th>Data / Hora</th><th>Status</th><th>Responsável</th><th>Ações</th></tr></thead>
-      <tbody>${rows||'<tr><td colspan="8" style="text-align:center;padding:32px;color:#94A3B8">Nenhum serviço encontrado.</td></tr>'}</tbody></table>
+      <div class="table-card">
+        <div class="table-search" style="flex-wrap:wrap;gap:8px">
+          <select class="select-filter" onchange="filtroServicos.tipo=this.value;renderDashboard()">
+            <option value="">Todos os tipos</option>
+            ${['Audiência','Perícia','Prazo','Diligência','Suporte'].map(t=>`<option ${filtroServicos.tipo===t?'selected':''}>${t}</option>`).join('')}
+          </select>
+          <select class="select-filter" onchange="filtroServicos.status=this.value;renderDashboard()">
+            <option value="">Todos os status</option>
+            ${['A Fazer','Em Andamento','Concluído'].map(s=>`<option ${filtroServicos.status===s?'selected':''}>${s}</option>`).join('')}
+          </select>
+        </div>
+        <table><thead><tr><th>Tipo</th><th>Processo</th><th>Cliente</th><th>Parte Adversa</th><th>Data / Hora</th><th>Status</th><th>Responsável</th><th>Ações</th></tr></thead>
+        <tbody>${rows||'<tr><td colspan="8" style="text-align:center;padding:32px;color:#94A3B8">Nenhum serviço encontrado.</td></tr>'}</tbody></table>
+      </div>
     </div>
   `;
+}
+
+function renderServicos(){
+  document.getElementById('content-area').innerHTML=`<div style="padding:20px">${buildServicosHTML()}</div>`;
 }
 
 function openServicoModal(id=null,preProcessoId=null){
@@ -3475,7 +3486,7 @@ async function saveServico(){
     SERVICOS.push({id:novo.id,...dados,criacao:novo.created_at||new Date().toISOString().slice(0,10)});
     showToast('Serviço cadastrado!','success');
   }
-  closeModal('servico-modal');renderServicos();
+  closeModal('servico-modal');renderDashboard();
 }
 
 function avancarStatus(id){
@@ -3484,7 +3495,7 @@ function avancarStatus(id){
   showConfirm('Atualizar Status',`Mover serviço para <b>${prox}</b>?`,async()=>{
     s.status=prox;
     await DB.atualizar('servicos',id,{status:prox});
-    showToast(`Status: ${prox}`,'success');renderServicos();
+    showToast(`Status: ${prox}`,'success');renderDashboard();
   });
 }
 
@@ -3492,7 +3503,7 @@ function deleteServico(id){
   showConfirm('Excluir Serviço','Excluir este serviço?',async()=>{
     await DB.deletar('servicos',id);
     SERVICOS=SERVICOS.filter(s=>s.id!==id);
-    showToast('Serviço excluído.','success');renderServicos();
+    showToast('Serviço excluído.','success');renderDashboard();
   });
 }
 
