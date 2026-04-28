@@ -3087,16 +3087,23 @@ function _renderCvBody(clienteId,c,activeTab){
     </div>
     ${c.obs?`<div style="background:var(--amarelo-claro);border-radius:8px;padding:12px;font-size:13px"><b>Obs:</b> ${c.obs}</div>`:''}
   `;
-  const svcRows=svcList.length?svcList.map(s=>{
+  const svcRows=svcList.length?svcList.sort((a,b)=>(b.data||'').localeCompare(a.data||'')).map(s=>{
     const resp=USUARIOS.find(u=>u.login===s.responsavel);
+    const nomeResp=resp?resp.nome.split(' ').slice(0,2).join(' '):(s.responsavel||'—');
+    const isAuto=s.obs&&s.obs.startsWith('[Auto]');
+    const autoBadge=isAuto?`<span style="font-size:10px;background:#EDE9FE;color:#7C3AED;border-radius:4px;padding:1px 5px;margin-left:4px">via processo</span>`:'';
+    const dataConcl=s.dataConclusao?`<div style="font-size:10px;color:var(--cinza-texto)">Concluído em: ${s.dataConclusao}</div>`:'';
+    const acoes=s.status==='Concluído'
+      ?`<button class="btn-secondary" style="font-size:11px;padding:4px 8px" onclick="avancarStatusCliSvc(${s.id},${clienteId})">↩ Reabrir</button>`
+      :`<button class="btn-secondary" style="font-size:11px;padding:4px 8px" onclick="avancarStatusCliSvc(${s.id},${clienteId})">▶ Avançar</button>`;
     return `<tr>
-      <td><span class="badge" style="${tipoClr[s.tipo]||''};font-size:11px;padding:3px 8px">${s.tipo}</span></td>
-      <td>${s.data}</td>
+      <td><span class="badge" style="${tipoClr[s.tipo]||'background:#F1F5F9;color:#475569'};font-size:11px;padding:3px 8px">${s.tipo}</span>${autoBadge}</td>
+      <td>${s.data||'—'}${dataConcl}</td>
       <td style="max-width:200px">${s.desc||'—'}</td>
       <td><span class="badge" style="${stClr[s.status]||''};font-size:11px;padding:3px 8px">${s.status}</span></td>
-      <td>${resp?resp.nome.split(' ').slice(0,2).join(' '):'—'}</td>
+      <td><div style="font-size:12px;font-weight:600">${nomeResp}</div><div style="font-size:10px;color:var(--cinza-texto)">${s.responsavel||''}</div></td>
       <td><div class="td-actions">
-        <button class="btn-secondary" style="font-size:11px;padding:4px 8px" onclick="avancarStatusCliSvc(${s.id},${clienteId})">▶ Avançar</button>
+        ${acoes}
         <button class="btn-edit" style="font-size:11px;padding:4px 8px" onclick="openServicoClienteModal(${clienteId},${s.id})">✏️</button>
         <button class="btn-danger" style="font-size:11px;padding:4px 8px" onclick="deleteServicoCliente(${s.id},${clienteId})">🗑</button>
       </div></td>
@@ -3171,8 +3178,16 @@ function avancarStatusCliSvc(svcId,clienteId){
   const prox=s.status==='A Fazer'?'Em Andamento':s.status==='Em Andamento'?'Concluído':'A Fazer';
   showConfirm('Atualizar Status',`Mover para <b>${prox}</b>?`,async()=>{
     s.status=prox;
-    await DB.atualizar('servicos_cliente',svcId,{status:prox});
-    showToast('Status: '+prox,'success');cvTab('cv-servicos',clienteId);
+    const upd={status:prox};
+    if(prox==='Concluído'){
+      upd.responsavel=currentUser.login;
+      upd.dataConclusao=new Date().toISOString().slice(0,10);
+      s.responsavel=currentUser.login;
+      s.dataConclusao=upd.dataConclusao;
+    }
+    await DB.atualizar('servicos_cliente',svcId,upd);
+    showToast(prox==='Concluído'?'✅ Serviço concluído e registrado na pasta do cliente!':'Status: '+prox,'success');
+    cvTab('cv-servicos',clienteId);
   });
 }
 function deleteServicoCliente(svcId,clienteId){
@@ -3580,7 +3595,23 @@ function avancarStatus(id){
   showConfirm('Atualizar Status',`Mover serviço para <b>${prox}</b>?`,async()=>{
     s.status=prox;
     await DB.atualizar('servicos',id,{status:prox});
-    showToast(`Status: ${prox}`,'success');renderDashboard();
+    // Ao concluir: registra automaticamente na pasta do cliente
+    if(prox==='Concluído'){
+      const proc=PROCESSOS.find(p=>p.id===s.processoId);
+      if(proc){
+        const hoje=new Date().toISOString().slice(0,10);
+        const descFinal=(s.desc||s.tipo)+(s.local?' — '+s.local:'');
+        const dados={clienteId:proc.clienteId,tipo:s.tipo,status:'Concluído',responsavel:s.responsavel,data:hoje,desc:descFinal,obs:'[Auto] Processo: '+proc.numeroCNJ,criacao:hoje};
+        const novo=await DB.inserir('servicos_cliente',dados);
+        SERVICOS_CLIENTE.push({id:novo?.id||Date.now(),...dados});
+        showToast('✅ Serviço concluído e registrado na pasta do cliente!','success');
+      } else {
+        showToast(`Status: ${prox}`,'success');
+      }
+    } else {
+      showToast(`Status: ${prox}`,'success');
+    }
+    renderDashboard();
   });
 }
 
