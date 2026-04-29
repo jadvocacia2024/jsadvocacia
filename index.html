@@ -3290,9 +3290,9 @@ function openProcessoModal(id=null){
   // Popular selects com dados de cadastros
   const cliSel=document.getElementById('proc-cliente');
   cliSel.innerHTML='<option value="">Selecionar cliente...</option>'+CLIENTES.filter(c=>c.ativo).map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
-  ['proc-tipo','proc-fase','proc-adversa','proc-comarca','proc-vara'].forEach(selId=>{
+  ['proc-tipo','proc-fase','proc-etapa','proc-adversa','proc-comarca','proc-vara'].forEach(selId=>{
     const sel=document.getElementById(selId);
-    const map={'proc-tipo':'tiposAcao','proc-fase':'fases','proc-adversa':'partesAdversas','proc-comarca':'comarcas','proc-vara':'varas'};
+    const map={'proc-tipo':'tiposAcao','proc-fase':'fases','proc-etapa':'etapasProcessuais','proc-adversa':'partesAdversas','proc-comarca':'comarcas','proc-vara':'varas'};
     sel.innerHTML='<option value="">Selecionar...</option>'+CADASTROS[map[selId]].map(i=>`<option>${i.nome}</option>`).join('');
   });
   const parSel=document.getElementById('proc-parceiro');
@@ -3305,6 +3305,7 @@ function openProcessoModal(id=null){
     document.getElementById('proc-status').value=p.status;
     document.getElementById('proc-tipo').value=p.tipoAcao;
     document.getElementById('proc-fase').value=p.fase;
+    document.getElementById('proc-etapa').value=p.etapaProcessual||'';
     document.getElementById('proc-adversa').value=p.parteAdversa;
     document.getElementById('proc-parceiro').value=p.parceiro||'';
     document.getElementById('proc-comarca').value=p.comarca;
@@ -3331,9 +3332,9 @@ async function saveProcesso(){
   const cliId=document.getElementById('proc-cliente').value;
   const adversa=document.getElementById('proc-adversa').value;
   if(!cnj||!cliId||!adversa){showToast('Preencha CNJ, cliente e parte adversa','error');return;}
-  const dados={numeroCNJ:cnj,clienteId:parseInt(cliId),responsavelAdv:currentUser.perfil==='Advogado'?currentUser.login:(PROCESSOS.find(x=>x.id===parseInt(id))||{}).responsavelAdv||currentUser.login,parteAdversa:adversa,tipoAcao:document.getElementById('proc-tipo').value,fase:document.getElementById('proc-fase').value,comarca:document.getElementById('proc-comarca').value,vara:document.getElementById('proc-vara').value,municipio:document.getElementById('proc-municipio').value,valorCausa:document.getElementById('proc-valor').value,honorariosPct:document.getElementById('proc-honorarios-pct').value,honrariosVal:document.getElementById('proc-honorarios-val').value,ultimoAndamento:document.getElementById('proc-andamento').value,dataAndamento:document.getElementById('proc-and-data').value,link:document.getElementById('proc-link').value,status:document.getElementById('proc-status').value,protocolo:document.getElementById('proc-protocolo').value,parceiro:document.getElementById('proc-parceiro').value,obs:document.getElementById('proc-obs').value};
+  const dados={numeroCNJ:cnj,clienteId:parseInt(cliId),responsavelAdv:currentUser.perfil==='Advogado'?currentUser.login:(PROCESSOS.find(x=>x.id===parseInt(id))||{}).responsavelAdv||currentUser.login,parteAdversa:adversa,tipoAcao:document.getElementById('proc-tipo').value,fase:document.getElementById('proc-fase').value,etapaProcessual:document.getElementById('proc-etapa').value,comarca:document.getElementById('proc-comarca').value,vara:document.getElementById('proc-vara').value,municipio:document.getElementById('proc-municipio').value,valorCausa:document.getElementById('proc-valor').value,honorariosPct:document.getElementById('proc-honorarios-pct').value,honrariosVal:document.getElementById('proc-honorarios-val').value,ultimoAndamento:document.getElementById('proc-andamento').value,dataAndamento:document.getElementById('proc-and-data').value,link:document.getElementById('proc-link').value,status:document.getElementById('proc-status').value,protocolo:document.getElementById('proc-protocolo').value,parceiro:document.getElementById('proc-parceiro').value,obs:document.getElementById('proc-obs').value};
   const _n=v=>v===''||v===null||v===undefined?null:v;
-  const dbDados={numero_cnj:dados.numeroCNJ,cliente_id:dados.clienteId,responsavel_adv:dados.responsavelAdv,parte_adversa:dados.parteAdversa,tipo_acao:dados.tipoAcao,fase:dados.fase,comarca:dados.comarca,vara:dados.vara,municipio:dados.municipio,valor_causa:_n(dados.valorCausa),honorarios_pct:_n(dados.honorariosPct),honorarios_val:_n(dados.honrariosVal),ultimo_andamento:dados.ultimoAndamento,data_andamento:_n(dados.dataAndamento),link:dados.link,status:dados.status,protocolo:_n(dados.protocolo),parceiro:dados.parceiro,obs:dados.obs};
+  const dbDados={numero_cnj:dados.numeroCNJ,cliente_id:dados.clienteId,responsavel_adv:dados.responsavelAdv,parte_adversa:dados.parteAdversa,tipo_acao:dados.tipoAcao,fase:dados.fase,etapa_processual:dados.etapaProcessual||null,comarca:dados.comarca,vara:dados.vara,municipio:dados.municipio,valor_causa:_n(dados.valorCausa),honorarios_pct:_n(dados.honorariosPct),honorarios_val:_n(dados.honrariosVal),ultimo_andamento:dados.ultimoAndamento,data_andamento:_n(dados.dataAndamento),link:dados.link,status:dados.status,protocolo:_n(dados.protocolo),parceiro:dados.parceiro,obs:dados.obs};
   if(id){
     const idn=parseInt(id);
     const p=PROCESSOS.find(p=>p.id===idn);
@@ -6305,6 +6306,7 @@ document.getElementById('confirm-overlay').addEventListener('click',function(e){
       <div class="form-section">
         <div class="form-section-title">📋 Classificação</div>
         <div class="field-group"><div class="field"><label>Tipo de Ação *</label><select id="proc-tipo"><option value="">Selecionar...</option></select></div><div class="field"><label>Fase Processual</label><select id="proc-fase"><option value="">Selecionar...</option></select></div></div>
+        <div class="field-group"><div class="field"><label>Etapa Processual</label><select id="proc-etapa"><option value="">Selecionar...</option></select></div><div class="field"></div></div>
         <div class="field-group"><div class="field"><label>Parte Adversa *</label><select id="proc-adversa"><option value="">Selecionar...</option></select></div><div class="field"><label>Parceiro</label><select id="proc-parceiro"><option value="">Nenhum</option></select></div></div>
       </div>
       <div class="form-section">
