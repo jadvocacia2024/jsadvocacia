@@ -3573,33 +3573,40 @@ function openServicoModal(id=null,preProcessoId=null){
 }
 function editServico(id){openServicoModal(id);}
 
+let _savingServico=false;
 async function saveServico(){
-  const id=document.getElementById('svc-id').value;
-  const procId=document.getElementById('svc-processo').value;
-  const tipo=document.getElementById('svc-tipo').value;
-  const data=document.getElementById('svc-data').value;
-  if(!procId||!tipo||!data){showToast('Preencha processo, tipo e data','error');return;}
-  const dados={processoId:parseInt(procId),tipo,status:document.getElementById('svc-status').value,responsavel:document.getElementById('svc-responsavel').value,data,hora:document.getElementById('svc-hora').value,local:document.getElementById('svc-local').value,desc:document.getElementById('svc-desc').value,obs:document.getElementById('svc-obs').value};
-  const dbDados={processo_id:dados.processoId,tipo:dados.tipo,status:dados.status,responsavel:dados.responsavel,data:dados.data,hora:dados.hora||null,local:dados.local,descricao:dados.desc,obs:dados.obs};
-  dados.responsavel=dados.responsavel||currentUser.login;
-  dbDados.responsavel=dados.responsavel;
-  if(id){
-    const idn=parseInt(id);
-    const anterior=SERVICOS.find(s=>s.id===idn);
-    const eraConc=anterior.status==='Concluído';
-    Object.assign(anterior,dados);
-    await DB.atualizar('servicos',idn,dbDados);
-    if(dados.status==='Concluído'&&!eraConc) await registrarConcluidoNaPasta(anterior);
-    showToast('Serviço atualizado!','success');
-  } else {
-    const novo=await DB.inserir('servicos',dbDados);
-    if(!novo){showToast('Erro ao salvar serviço no banco','error');return;}
-    const svcNovo={id:novo.id,...dados,criacao:novo.created_at||new Date().toISOString().slice(0,10)};
-    SERVICOS.push(svcNovo);
-    if(dados.status==='Concluído') await registrarConcluidoNaPasta(svcNovo);
-    showToast('Serviço cadastrado!','success');
+  if(_savingServico)return;
+  _savingServico=true;
+  try{
+    const id=document.getElementById('svc-id').value;
+    const procId=document.getElementById('svc-processo').value;
+    const tipo=document.getElementById('svc-tipo').value;
+    const data=document.getElementById('svc-data').value;
+    if(!procId||!tipo||!data){showToast('Preencha processo, tipo e data','error');return;}
+    const dados={processoId:parseInt(procId),tipo,status:document.getElementById('svc-status').value,responsavel:document.getElementById('svc-responsavel').value,data,hora:document.getElementById('svc-hora').value,local:document.getElementById('svc-local').value,desc:document.getElementById('svc-desc').value,obs:document.getElementById('svc-obs').value};
+    const dbDados={processo_id:dados.processoId,tipo:dados.tipo,status:dados.status,responsavel:dados.responsavel,data:dados.data,hora:dados.hora||null,local:dados.local,descricao:dados.desc,obs:dados.obs};
+    dados.responsavel=dados.responsavel||currentUser.login;
+    dbDados.responsavel=dados.responsavel;
+    if(id){
+      const idn=parseInt(id);
+      const anterior=SERVICOS.find(s=>s.id===idn);
+      const eraConc=anterior.status==='Concluído';
+      Object.assign(anterior,dados);
+      await DB.atualizar('servicos',idn,dbDados);
+      if(dados.status==='Concluído'&&!eraConc) await registrarConcluidoNaPasta(anterior);
+      showToast('Serviço atualizado!','success');
+    } else {
+      const novo=await DB.inserir('servicos',dbDados);
+      if(!novo||novo._erro){showToast('Erro ao salvar serviço: '+(novo?._erro||'falha no banco'),'error');return;}
+      const svcNovo={id:novo.id,...dados,criacao:novo.created_at||new Date().toISOString().slice(0,10)};
+      SERVICOS.push(svcNovo);
+      if(dados.status==='Concluído') await registrarConcluidoNaPasta(svcNovo);
+      showToast('Serviço cadastrado!','success');
+    }
+    closeModal('servico-modal');renderDashboard();
+  } finally {
+    _savingServico=false;
   }
-  closeModal('servico-modal');renderDashboard();
 }
 
 // Registra serviço concluído na pasta do cliente (evita duplicata)
