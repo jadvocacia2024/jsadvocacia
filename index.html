@@ -6205,7 +6205,8 @@ document.getElementById('confirm-overlay').addEventListener('click',function(e){
       </div>
       <div class="form-section">
         <div class="form-section-title">💰 Valores e Honorários</div>
-        <div class="field-3"><div class="field"><label>Valor da Causa (R$)</label><input type="text" id="proc-valor" placeholder="0,00"></div><div class="field"><label>Honorários (%)</label><input type="number" id="proc-honorarios-pct" placeholder="20" min="0" max="100"></div><div class="field"><label>Honorários (R$)</label><input type="text" id="proc-honorarios-val" placeholder="Calculado auto"></div></div>
+        <div class="field-group"><div class="field"><label>Honorários (%)</label><input type="number" id="proc-honorarios-pct" placeholder="20" min="0" max="100"></div></div>
+        <input type="hidden" id="proc-valor"><input type="hidden" id="proc-honorarios-val">
       </div>
       <div class="form-section">
         <div class="form-section-title">📌 Último Andamento</div>
