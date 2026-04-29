@@ -6,6 +6,7 @@
 <title>JSAdvocacia — Sistema de Gestão v2.0</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
   const SUPABASE_URL = 'https://mwbctvbukjcrkmxyjrrj.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im13YmN0dmJ1a2pjcmtteHlqcnJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyMjg1ODksImV4cCI6MjA5MjgwNDU4OX0.ir-bLav3qwYqO1HFPITBZ4qqdsW5TGDC4jI1ARhGmhw';
@@ -4126,63 +4127,163 @@ function renderLog(){
 }
 
 // ════════════════════════════════════════════════════════════════
-// FASE 5 — EXPORTAÇÃO CSV
+// FASE 5 — EXPORTAÇÃO EXCEL (SheetJS)
 // ════════════════════════════════════════════════════════════════
-function exportarCSV(dados, colunas, nomeArquivo){
-  const header = colunas.map(c=>c.label).join(';');
-  const rows   = dados.map(d=>colunas.map(c=>{
-    const v = c.fn ? c.fn(d) : (d[c.key]||'');
-    return '"'+(String(v).replace(/"/g,'""'))+'"';
-  }).join(';'));
-  const csv = String.fromCharCode(0xFEFF) + [header,...rows].join('\
-');
-  const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href=url; a.download=nomeArquivo; a.click();
-  URL.revokeObjectURL(url);
-  showToast('Exportação concluída!','success');
-  registrarLog('edit','Exportação','Exportou ' + nomeArquivo);
+function _xlsxDownload(linhas, nomeArquivo, nomeAba){
+  if(!linhas||linhas.length<=1){showToast('Nenhum dado para exportar.','error');return;}
+  const ws = XLSX.utils.aoa_to_sheet(linhas);
+  // Largura automática das colunas
+  const colWidths = linhas[0].map((_,ci)=>({wch:Math.min(50,Math.max(12,...linhas.map(r=>String(r[ci]||'').length)))}));
+  ws['!cols'] = colWidths;
+  // AutoFiltro na primeira linha
+  ws['!autofilter'] = {ref: XLSX.utils.encode_range({s:{r:0,c:0},e:{r:linhas.length-1,c:linhas[0].length-1}})};
+  // Congela cabeçalho
+  ws['!freeze'] = {xSplit:0,ySplit:1};
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, nomeAba||'Dados');
+  XLSX.writeFile(wb, nomeArquivo);
+  showToast('Excel gerado com sucesso!','success');
+  registrarLog('edit','Exportação','Exportou '+nomeArquivo);
 }
 
-function exportarClientes(){
-  exportarCSV(CLIENTES,[
-    {label:'Nome',key:'nome'},{label:'CPF',key:'cpf'},{label:'Nascimento',key:'nascimento'},
-    {label:'Telefone',key:'telefone'},{label:'E-mail',key:'email'},{label:'Município',key:'municipio'},
-    {label:'Estado',key:'estado'},{label:'Órgão',key:'orgao'},{label:'Cargo',key:'cargo'},
-    {label:'RG',key:'rg'},{label:'Estado Civil',key:'estadoCivil'},{label:'Bairro',key:'bairro'},{label:'Vínculo',key:'vinculo'},{label:'Origem',key:'origem'},
-    {label:'Status',key:'ativo',fn:d=>d.ativo?'Ativo':'Inativo'},{label:'Data Cadastro',key:'dataCadastro'}
-  ],'clientes_'+new Date().toISOString().slice(0,10)+'.csv');
+function abrirModalExportar(tipo){
+  const hoje = new Date().toISOString().slice(0,10);
+  let filtrosHtml='', titulo='', icon='';
+  if(tipo==='processos'){
+    titulo='Processos'; icon='⚖️';
+    const statusOpts=['','ativo','suspenso','arquivado'].map(v=>`<option value="${v}">${v||'Todos'}</option>`).join('');
+    const faseOpts=['<option value="">Todas as fases</option>',...(CADASTROS.fases||[]).map(f=>`<option>${f.nome}</option>`)].join('');
+    const tipoOpts=['<option value="">Todos os tipos</option>',...(CADASTROS.tiposAcao||[]).map(f=>`<option>${f.nome}</option>`)].join('');
+    const comarcaOpts=['<option value="">Todas as comarcas</option>',...(CADASTROS.comarcas||[]).map(f=>`<option>${f.nome}</option>`)].join('');
+    filtrosHtml=`
+      <div class="field-group">
+        <div class="field"><label>Status</label><select id="exp-status">${statusOpts}</select></div>
+        <div class="field"><label>Fase</label><select id="exp-fase">${faseOpts}</select></div>
+      </div>
+      <div class="field-group">
+        <div class="field"><label>Tipo de Ação</label><select id="exp-tipo">${tipoOpts}</select></div>
+        <div class="field"><label>Comarca</label><select id="exp-comarca">${comarcaOpts}</select></div>
+      </div>`;
+  } else if(tipo==='clientes'){
+    titulo='Clientes'; icon='👥';
+    const municipios=[...new Set(CLIENTES.map(c=>c.municipio).filter(Boolean))].sort();
+    const orgaos=[...new Set(CLIENTES.map(c=>c.orgao).filter(Boolean))].sort();
+    const munOpts=['<option value="">Todos</option>',...municipios.map(m=>`<option>${m}</option>`)].join('');
+    const orgOpts=['<option value="">Todos</option>',...orgaos.map(o=>`<option>${o}</option>`)].join('');
+    filtrosHtml=`
+      <div class="field-group">
+        <div class="field"><label>Status</label><select id="exp-status"><option value="">Todos</option><option value="ativo">Ativo</option><option value="inativo">Inativo</option></select></div>
+        <div class="field"><label>Município</label><select id="exp-municipio">${munOpts}</select></div>
+      </div>
+      <div class="field-group">
+        <div class="field"><label>Órgão</label><select id="exp-orgao">${orgOpts}</select></div>
+        <div class="field"><label>Vínculo</label><select id="exp-vinculo"><option value="">Todos</option><option>Efetivo</option><option>Comissionado</option><option>Contratado</option><option>Aposentado</option></select></div>
+      </div>`;
+  } else if(tipo==='servicos'){
+    titulo='Serviços'; icon='🗓️';
+    const respOpts=['<option value="">Todos</option>',...USUARIOS.filter(u=>u.ativo).map(u=>`<option value="${u.login}">${u.nome.split(' ').slice(0,2).join(' ')}</option>`)].join('');
+    filtrosHtml=`
+      <div class="field-group">
+        <div class="field"><label>Status</label><select id="exp-status"><option value="">Todos</option><option>A Fazer</option><option>Em Andamento</option><option>Concluído</option></select></div>
+        <div class="field"><label>Tipo</label><select id="exp-tipo"><option value="">Todos</option><option>Audiência</option><option>Perícia</option><option>Prazo</option><option>Diligência</option><option>Suporte</option><option>Cálculo</option></select></div>
+      </div>
+      <div class="field-group">
+        <div class="field"><label>Responsável</label><select id="exp-resp">${respOpts}</select></div>
+        <div class="field"><label>Data (a partir de)</label><input type="date" id="exp-data-ini"></div>
+      </div>
+      <div class="field-group">
+        <div class="field"><label>Data (até)</label><input type="date" id="exp-data-fim" value="${hoje}"></div>
+      </div>`;
+  } else if(tipo==='financeiro'){
+    titulo='Precatórios / Financeiro'; icon='💰';
+    const anos=[...new Set(PRECATORIOS.map(p=>p.anoPrevisao).filter(Boolean))].sort();
+    const anoOpts=['<option value="">Todos</option>',...anos.map(a=>`<option>${a}</option>`)].join('');
+    filtrosHtml=`
+      <div class="field-group">
+        <div class="field"><label>Status</label><select id="exp-status"><option value="">Todos</option><option>Aguardando</option><option>Em Análise</option><option>Aprovado</option><option>Pago</option></select></div>
+        <div class="field"><label>Tipo</label><select id="exp-tipo"><option value="">Todos</option><option>Federal</option><option>Estadual</option><option>Municipal</option></select></div>
+      </div>
+      <div class="field-group">
+        <div class="field"><label>Ano de Previsão</label><select id="exp-ano">${anoOpts}</select></div>
+      </div>`;
+  } else if(tipo==='leads'){
+    titulo='Leads / Pré-Atendimento'; icon='🎯';
+    filtrosHtml=`
+      <div class="field-group">
+        <div class="field"><label>Status</label><select id="exp-status"><option value="">Todos</option><option>Aguardando Triagem</option><option>Em Atendimento</option><option>Aprovado</option><option>Reprovado</option></select></div>
+        <div class="field"><label>Canal</label><select id="exp-canal"><option value="">Todos</option><option>WhatsApp</option><option>Indicação</option><option>Site</option><option>Presencial</option></select></div>
+      </div>
+      <div class="field-group">
+        <div class="field"><label>Data (a partir de)</label><input type="date" id="exp-data-ini"></div>
+        <div class="field"><label>Data (até)</label><input type="date" id="exp-data-fim" value="${hoje}"></div>
+      </div>`;
+  }
+  document.getElementById('exp-modal-title').textContent = icon+' Exportar — '+titulo;
+  document.getElementById('exp-modal-filtros').innerHTML = filtrosHtml;
+  document.getElementById('exp-modal-btn').onclick = ()=>_gerarExcel(tipo);
+  openModal('exportar-modal');
 }
 
-function exportarProcessos(){
-  exportarCSV(PROCESSOS,[
-    {label:'Nº CNJ',key:'numeroCNJ'},{label:'Cliente',key:'clienteId',fn:d=>{const c=CLIENTES.find(c=>c.id===d.clienteId);return c?c.nome:'?';}},
-    {label:'Parte Adversa',key:'parteAdversa'},{label:'Tipo de Ação',key:'tipoAcao'},
-    {label:'Fase',key:'fase'},{label:'Vara',key:'vara'},{label:'Comarca',key:'comarca'},
-    {label:'Tribunal',key:'tribunal'},{label:'Status',key:'status'},
-    {label:'Último Andamento',key:'dataAndamento'}
-  ],'processos_'+new Date().toISOString().slice(0,10)+'.csv');
+function _gerarExcel(tipo){
+  const v=id=>{ const el=document.getElementById(id); return el?el.value:''; };
+  const hoje=new Date().toISOString().slice(0,10);
+  if(tipo==='processos'){
+    const st=v('exp-status'), fase=v('exp-fase'), tipoAc=v('exp-tipo'), com=v('exp-comarca');
+    let dados=PROCESSOS.filter(p=>
+      (!st||p.status===st) && (!fase||p.fase===fase) &&
+      (!tipoAc||p.tipoAcao===tipoAc) && (!com||p.comarca===com));
+    const header=['Nº CNJ','Cliente','CPF Cliente','Telefone','Parte Adversa','Tipo de Ação','Fase','Comarca','Vara','Município','Honorários (%)','Protocolo','Responsável','Parceiro','Status','Data Andamento','Último Andamento','Observações'];
+    const rows=dados.map(p=>{
+      const c=CLIENTES.find(c=>c.id===p.clienteId)||{};
+      return [p.numeroCNJ,c.nome||'',c.cpf||'',c.telefone||'',p.parteAdversa,p.tipoAcao,p.fase,p.comarca,p.vara||'',p.municipio||'',p.honorariosPct||'',p.protocolo||'',p.responsavelAdv,p.parceiro||'',p.status,p.dataAndamento||'',p.ultimoAndamento||'',p.obs||''];
+    });
+    _xlsxDownload([header,...rows],'processos_'+hoje+'.xlsx','Processos');
+  } else if(tipo==='clientes'){
+    const st=v('exp-status'), mun=v('exp-municipio'), org=v('exp-orgao'), vin=v('exp-vinculo');
+    let dados=CLIENTES.filter(c=>
+      (!st||(st==='ativo'?c.ativo:!c.ativo)) && (!mun||c.municipio===mun) &&
+      (!org||c.orgao===org) && (!vin||c.vinculo===vin));
+    const header=['Nome','CPF','RG','Nascimento','Telefone','E-mail','Município','Estado','Bairro','Logradouro','Nº','CEP','Órgão','Cargo','Vínculo','Estado Civil','Origem','Status','Data Cadastro','Observações'];
+    const rows=dados.map(c=>[c.nome,c.cpf||'',c.rg||'',c.nascimento||'',c.telefone||'',c.email||'',c.municipio||'',c.estado||'',c.bairro||'',c.logradouro||'',c.numero||'',c.cep||'',c.orgao||'',c.cargo||'',c.vinculo||'',c.estadoCivil||'',c.origem||'',c.ativo?'Ativo':'Inativo',c.dataCadastro||'',c.obs||'']);
+    _xlsxDownload([header,...rows],'clientes_'+hoje+'.xlsx','Clientes');
+  } else if(tipo==='servicos'){
+    const st=v('exp-status'), tp=v('exp-tipo'), resp=v('exp-resp'), ini=v('exp-data-ini'), fim=v('exp-data-fim');
+    let dados=SERVICOS.filter(s=>
+      (!st||s.status===st) && (!tp||s.tipo===tp) && (!resp||s.responsavel===resp) &&
+      (!ini||s.data>=ini) && (!fim||s.data<=fim));
+    const header=['Tipo','Processo (CNJ)','Cliente','Parte Adversa','Status','Responsável','Data','Hora','Local','Descrição','Observações'];
+    const rows=dados.map(s=>{
+      const p=PROCESSOS.find(p=>p.id===s.processoId)||{};
+      const c=CLIENTES.find(c=>c.id===p.clienteId)||{};
+      return [s.tipo,p.numeroCNJ||'',c.nome||'',p.parteAdversa||'',s.status,s.responsavel||'',s.data||'',s.hora||'',s.local||'',s.desc||'',s.obs||''];
+    });
+    _xlsxDownload([header,...rows],'servicos_'+hoje+'.xlsx','Serviços');
+  } else if(tipo==='financeiro'){
+    const st=v('exp-status'), tp=v('exp-tipo'), ano=v('exp-ano');
+    let dados=PRECATORIOS.filter(p=>(!st||p.status===st)&&(!tp||p.tipo===tp)&&(!ano||String(p.anoPrevisao)===ano));
+    const header=['Tipo','Cliente','Processo (CNJ)','Vara','Tribunal','Valor Bruto','Valor Líquido','Ano Previsão','Status','Parceiro','Observações'];
+    const rows=dados.map(p=>{
+      const c=CLIENTES.find(c=>c.id===p.clienteId)||{};
+      const proc=PROCESSOS.find(pr=>pr.id===p.processoId)||{};
+      return [p.tipo,c.nome||'',proc.numeroCNJ||'',p.vara||'',p.tribunal||'',p.valorBruto||'',p.valorLiquido||'',p.anoPrevisao||'',p.status,p.parceiro||'',p.obs||''];
+    });
+    _xlsxDownload([header,...rows],'financeiro_'+hoje+'.xlsx','Precatórios');
+  } else if(tipo==='leads'){
+    const st=v('exp-status'), canal=v('exp-canal'), ini=v('exp-data-ini'), fim=v('exp-data-fim');
+    let dados=LEADS.filter(l=>(!st||l.status===st)&&(!canal||l.canal===canal)&&(!ini||l.data>=ini)&&(!fim||l.data<=fim));
+    const header=['Nome','Telefone','Município','Tipo Servidor','Cargo','Órgão','Direito Buscado','Canal','Status','Data','Responsável','Observações'];
+    const rows=dados.map(l=>[l.nome,l.telefone||'',l.municipio||'',l.tipoServidor||'',l.cargo||'',l.orgao||'',l.direitoBuscado||'',l.canal||'',l.status,l.data||'',l.responsavel||'',l.obs||'']);
+    _xlsxDownload([header,...rows],'leads_'+hoje+'.xlsx','Leads');
+  }
+  closeModal('exportar-modal');
 }
 
-function exportarFinanceiro(){
-  exportarCSV(PRECATORIOS,[
-    {label:'Tipo',key:'tipo'},{label:'Cliente',key:'clienteId',fn:d=>{const c=CLIENTES.find(c=>c.id===d.clienteId);return c?c.nome:'?';}},
-    {label:'Vara',key:'vara'},{label:'Tribunal',key:'tribunal'},
-    {label:'Valor Bruto',key:'valorBruto'},{label:'Valor Líquido',key:'valorLiquido'},
-    {label:'Ano Previsão',key:'anoPrevisao'},{label:'Status',key:'status'},
-    {label:'Parceiro',key:'parceiro'},{label:'Observações',key:'obs'}
-  ],'financeiro_'+new Date().toISOString().slice(0,10)+'.csv');
-}
-
-function exportarLeads(){
-  exportarCSV(LEADS,[
-    {label:'Nome',key:'nome'},{label:'Telefone',key:'telefone'},{label:'Município',key:'municipio'},
-    {label:'Tipo Servidor',key:'tipoServidor'},{label:'Cargo',key:'cargo'},{label:'Órgão',key:'orgao'},
-    {label:'Direito Buscado',key:'direitoBuscado'},{label:'Canal',key:'canal'},
-    {label:'Status',key:'status'},{label:'Data',key:'data'},{label:'Observações',key:'obs'}
-  ],'leads_'+new Date().toISOString().slice(0,10)+'.csv');
-}
+// Atalhos para os botões existentes nas páginas
+function exportarClientes(){abrirModalExportar('clientes');}
+function exportarProcessos(){abrirModalExportar('processos');}
+function exportarFinanceiro(){abrirModalExportar('financeiro');}
+function exportarLeads(){abrirModalExportar('leads');}
+function exportarServicos(){abrirModalExportar('servicos');}
 
 // ════════════════════════════════════════════════════════════════
 // FASE 4 — PRÉ-ATENDIMENTO / TRIAGEM
@@ -6267,6 +6368,24 @@ document.getElementById('confirm-overlay').addEventListener('click',function(e){
   </div>
 </div>
 
+
+<!-- MODAL EXPORTAR DADOS -->
+<div class="modal-overlay" id="exportar-modal">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <span class="modal-title" id="exp-modal-title">Exportar Dados</span>
+      <button class="modal-close" onclick="closeModal('exportar-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--cinza-texto);margin-bottom:16px">Defina os filtros desejados e clique em <b>Baixar Excel</b>. Serão exportados apenas os registros que correspondem aos filtros selecionados.</p>
+      <div id="exp-modal-filtros"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('exportar-modal')">Cancelar</button>
+      <button class="btn-primary" id="exp-modal-btn">📥 Baixar Excel</button>
+    </div>
+  </div>
+</div>
 
 <!-- MODAL SOLICITAR DOCUMENTO AO PARCEIRO -->
 <div class="modal-overlay" id="solic-doc-modal">
