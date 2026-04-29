@@ -3289,9 +3289,9 @@ function openProcessoModal(id=null){
   // Popular selects com dados de cadastros
   const cliSel=document.getElementById('proc-cliente');
   cliSel.innerHTML='<option value="">Selecionar cliente...</option>'+CLIENTES.filter(c=>c.ativo).map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
-  ['proc-tipo','proc-fase','proc-adversa','proc-comarca','proc-vara','proc-municipio'].forEach(selId=>{
+  ['proc-tipo','proc-fase','proc-adversa','proc-comarca','proc-vara'].forEach(selId=>{
     const sel=document.getElementById(selId);
-    const map={'proc-tipo':'tiposAcao','proc-fase':'fases','proc-adversa':'partesAdversas','proc-comarca':'comarcas','proc-vara':'varas','proc-municipio':'municipios'};
+    const map={'proc-tipo':'tiposAcao','proc-fase':'fases','proc-adversa':'partesAdversas','proc-comarca':'comarcas','proc-vara':'varas'};
     sel.innerHTML='<option value="">Selecionar...</option>'+CADASTROS[map[selId]].map(i=>`<option>${i.nome}</option>`).join('');
   });
   const parSel=document.getElementById('proc-parceiro');
@@ -6199,7 +6199,7 @@ document.getElementById('confirm-overlay').addEventListener('click',function(e){
       </div>
       <div class="form-section">
         <div class="form-section-title">📍 Localização</div>
-        <div class="field-3"><div class="field"><label>Comarca *</label><select id="proc-comarca"><option value="">Selecionar...</option></select></div><div class="field"><label>Vara</label><select id="proc-vara"><option value="">Selecionar...</option></select></div><div class="field"><label>Município</label><select id="proc-municipio"><option value="">Selecionar...</option></select></div></div>
+        <div class="field-3"><div class="field"><label>Comarca *</label><select id="proc-comarca"><option value="">Selecionar...</option></select></div><div class="field"><label>Vara</label><select id="proc-vara"><option value="">Selecionar...</option></select></div><div class="field"><label>Município</label><input type="text" id="proc-municipio" placeholder="Digite o município..."></div></div>
       </div>
       <div class="form-section">
         <div class="form-section-title">💰 Valores e Honorários</div>
