@@ -85,7 +85,9 @@
       honrariosVal: p.honorarios_val, ultimoAndamento: p.ultimo_andamento,
       dataAndamento: p.data_andamento, link: p.link, status: p.status,
       protocolo: p.protocolo, responsavelAdv: p.responsavel_adv,
-      parceiro: p.parceiro, obs: p.obs, checklist: p.checklist || []
+      parceiro: p.parceiro, obs: p.obs, checklist: p.checklist || [],
+      etapaProcessual: p.etapa_processual||'',
+      emPrecatorio: !!p.em_precatorio, numeroPrecatorio: p.numero_precatorio||''
     }));
     if (serv !== null) SERVICOS = (serv||[]).map(s => ({
       id: s.id, processoId: s.processo_id, tipo: s.tipo, status: s.status,
@@ -3204,8 +3206,8 @@ function diasSemAndamento(p){
   if(!p.dataAndamento) return 999;
   return Math.floor((new Date()-new Date(p.dataAndamento))/(1000*60*60*24));
 }
-function andamentoClass(p){const d=diasSemAndamento(p);return d>60?'and-60':d>30?'and-30':'and-ok';}
-function andamentoBg(p){const d=diasSemAndamento(p);return d>60?'var(--vermelho-claro)':d>30?'var(--amarelo-claro)':'';}
+function andamentoClass(p){if(p.emPrecatorio)return 'and-ok';const d=diasSemAndamento(p);return d>60?'and-60':d>30?'and-30':'and-ok';}
+function andamentoBg(p){if(p.emPrecatorio)return 'var(--roxo-claro)';const d=diasSemAndamento(p);return d>60?'var(--vermelho-claro)':d>30?'var(--amarelo-claro)':'';}
 
 function renderProcessos(){
   const isParceiro = currentUser.perfil==='Parceiro';
@@ -3238,8 +3240,7 @@ function renderProcessos(){
       <td><span class="badge badge-advogado" style="font-size:10px">${p.fase}</span></td>
       <td style="font-size:12px">${p.comarca}</td>
       <td>
-        <span class="${andClass}">${andData}</span>
-        ${dias>30?`<span style="font-size:10px;display:block;color:inherit;">${dias}d sem mov.</span>`:''}
+        ${p.emPrecatorio?`<span style="font-size:10px;font-weight:700;color:var(--roxo);display:block">⚖️ PRECATÓRIO</span><span style="font-size:10px;color:var(--roxo)">${p.numeroPrecatorio||'s/nº'}</span>`:`<span class="${andClass}">${andData}</span>${dias>30?`<span style="font-size:10px;display:block;color:inherit;">${dias}d sem mov.</span>`:''}`}
       </td>
       <td class="${docsCompleto?'docs-ok':'docs-pendente'}">${docsOk}/${docsTotal} ${docsCompleto?'✅':'⚠️'}</td>
       <td><span class="badge ${p.status==='ativo'?'badge-ativo':'badge-inativo'}">${p.status}</span></td>
@@ -3283,6 +3284,10 @@ function renderProcessos(){
   `;
 }
 
+function togglePrecatorio(checked){
+  document.getElementById('proc-precatorio-fields').style.display=checked?'block':'none';
+}
+
 function openProcessoModal(id=null){
   const isNew=!id;
   document.getElementById('proc-modal-title').textContent=isNew?'Novo Processo':'Editar Processo';
@@ -3318,9 +3323,14 @@ function openProcessoModal(id=null){
     document.getElementById('proc-link').value=p.link||'';
     document.getElementById('proc-andamento').value=p.ultimoAndamento||'';
     document.getElementById('proc-obs').value=p.obs||'';
+    document.getElementById('proc-em-precatorio').checked=!!p.emPrecatorio;
+    document.getElementById('proc-numero-precatorio').value=p.numeroPrecatorio||'';
+    togglePrecatorio(!!p.emPrecatorio);
   } else {
-    ['proc-cnj','proc-protocolo','proc-valor','proc-honorarios-pct','proc-honorarios-val','proc-and-data','proc-link','proc-andamento','proc-obs'].forEach(f=>document.getElementById(f).value='');
+    ['proc-cnj','proc-protocolo','proc-valor','proc-honorarios-pct','proc-honorarios-val','proc-and-data','proc-link','proc-andamento','proc-obs','proc-numero-precatorio'].forEach(f=>document.getElementById(f).value='');
     document.getElementById('proc-status').value='ativo';
+    document.getElementById('proc-em-precatorio').checked=false;
+    togglePrecatorio(false);
   }
   openModal('processo-modal');
 }
@@ -3332,9 +3342,9 @@ async function saveProcesso(){
   const cliId=document.getElementById('proc-cliente').value;
   const adversa=document.getElementById('proc-adversa').value;
   if(!cnj||!cliId||!adversa){showToast('Preencha CNJ, cliente e parte adversa','error');return;}
-  const dados={numeroCNJ:cnj,clienteId:parseInt(cliId),responsavelAdv:currentUser.perfil==='Advogado'?currentUser.login:(PROCESSOS.find(x=>x.id===parseInt(id))||{}).responsavelAdv||currentUser.login,parteAdversa:adversa,tipoAcao:document.getElementById('proc-tipo').value,fase:document.getElementById('proc-fase').value,etapaProcessual:document.getElementById('proc-etapa').value,comarca:document.getElementById('proc-comarca').value,vara:document.getElementById('proc-vara').value,municipio:document.getElementById('proc-municipio').value,valorCausa:document.getElementById('proc-valor').value,honorariosPct:document.getElementById('proc-honorarios-pct').value,honrariosVal:document.getElementById('proc-honorarios-val').value,ultimoAndamento:document.getElementById('proc-andamento').value,dataAndamento:document.getElementById('proc-and-data').value,link:document.getElementById('proc-link').value,status:document.getElementById('proc-status').value,protocolo:document.getElementById('proc-protocolo').value,parceiro:document.getElementById('proc-parceiro').value,obs:document.getElementById('proc-obs').value};
+  const dados={numeroCNJ:cnj,clienteId:parseInt(cliId),responsavelAdv:currentUser.perfil==='Advogado'?currentUser.login:(PROCESSOS.find(x=>x.id===parseInt(id))||{}).responsavelAdv||currentUser.login,parteAdversa:adversa,tipoAcao:document.getElementById('proc-tipo').value,fase:document.getElementById('proc-fase').value,etapaProcessual:document.getElementById('proc-etapa').value,emPrecatorio:document.getElementById('proc-em-precatorio').checked,numeroPrecatorio:document.getElementById('proc-numero-precatorio').value,comarca:document.getElementById('proc-comarca').value,vara:document.getElementById('proc-vara').value,municipio:document.getElementById('proc-municipio').value,valorCausa:document.getElementById('proc-valor').value,honorariosPct:document.getElementById('proc-honorarios-pct').value,honrariosVal:document.getElementById('proc-honorarios-val').value,ultimoAndamento:document.getElementById('proc-andamento').value,dataAndamento:document.getElementById('proc-and-data').value,link:document.getElementById('proc-link').value,status:document.getElementById('proc-status').value,protocolo:document.getElementById('proc-protocolo').value,parceiro:document.getElementById('proc-parceiro').value,obs:document.getElementById('proc-obs').value};
   const _n=v=>v===''||v===null||v===undefined?null:v;
-  const dbDados={numero_cnj:dados.numeroCNJ,cliente_id:dados.clienteId,responsavel_adv:dados.responsavelAdv,parte_adversa:dados.parteAdversa,tipo_acao:dados.tipoAcao,fase:dados.fase,etapa_processual:dados.etapaProcessual||null,comarca:dados.comarca,vara:dados.vara,municipio:dados.municipio,valor_causa:_n(dados.valorCausa),honorarios_pct:_n(dados.honorariosPct),honorarios_val:_n(dados.honrariosVal),ultimo_andamento:dados.ultimoAndamento,data_andamento:_n(dados.dataAndamento),link:dados.link,status:dados.status,protocolo:_n(dados.protocolo),parceiro:dados.parceiro,obs:dados.obs};
+  const dbDados={numero_cnj:dados.numeroCNJ,cliente_id:dados.clienteId,responsavel_adv:dados.responsavelAdv,parte_adversa:dados.parteAdversa,tipo_acao:dados.tipoAcao,fase:dados.fase,etapa_processual:dados.etapaProcessual||null,em_precatorio:dados.emPrecatorio||false,numero_precatorio:dados.numeroPrecatorio||null,comarca:dados.comarca,vara:dados.vara,municipio:dados.municipio,valor_causa:_n(dados.valorCausa),honorarios_pct:_n(dados.honorariosPct),honorarios_val:_n(dados.honrariosVal),ultimo_andamento:dados.ultimoAndamento,data_andamento:_n(dados.dataAndamento),link:dados.link,status:dados.status,protocolo:_n(dados.protocolo),parceiro:dados.parceiro,obs:dados.obs};
   if(id){
     const idn=parseInt(id);
     const p=PROCESSOS.find(p=>p.id===idn);
@@ -6312,6 +6322,20 @@ document.getElementById('confirm-overlay').addEventListener('click',function(e){
       <div class="form-section">
         <div class="form-section-title">📍 Localização</div>
         <div class="field-3"><div class="field"><label>Comarca *</label><select id="proc-comarca"><option value="">Selecionar...</option></select></div><div class="field"><label>Vara</label><select id="proc-vara"><option value="">Selecionar...</option></select></div><div class="field"><label>Município</label><input type="text" id="proc-municipio" placeholder="Digite o município..."></div></div>
+      </div>
+      <div class="form-section">
+        <div class="form-section-title">⚖️ Precatório</div>
+        <div class="field-group">
+          <div class="field" style="display:flex;align-items:center;gap:10px;padding-top:6px">
+            <input type="checkbox" id="proc-em-precatorio" onchange="togglePrecatorio(this.checked)" style="width:18px;height:18px;cursor:pointer;accent-color:var(--roxo)">
+            <label for="proc-em-precatorio" style="cursor:pointer;font-weight:600;color:var(--roxo)">Processo em fase de Precatório</label>
+          </div>
+        </div>
+        <div id="proc-precatorio-fields" style="display:none">
+          <div class="field-group">
+            <div class="field"><label>Número do Processo de Precatório</label><input type="text" id="proc-numero-precatorio" placeholder="Ex: 0001234-56.2024.8.26.0000"></div>
+          </div>
+        </div>
       </div>
       <div class="form-section">
         <div class="form-section-title">💰 Valores e Honorários</div>
